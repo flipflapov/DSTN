@@ -1,15 +1,18 @@
 ﻿# DSTN (ДАСТАН): стартовое меню для Windows.
 #
 # Запуск: двойной щелчок по Start-DSTN.bat в корне репозитория. Один шаг без меню: Start-DSTN.bat <шаг>, где шаг —
-# check, install, build, testgame, frame, tests, find, game-check, port или victory.
+# check, install, build, testgame, frame, tests, find, game-check, port, victory или settings. Ключ -Drive D
+# задаёт диск для тяжёлых данных на этот запуск (иначе берётся выбранный в пункте 11).
 #
 # Каждый запуск пишет всё, что вывели шаги, в logs\dstn-<дата>.log. Этот лог можно присылать разработчику: в нём
 # только вывод инструментов. Файлы игры, извлечённые ресурсы и шейдеры никуда не выкладывайте.
 #
 # Файл сохранён в UTF-8 с BOM: без BOM Windows PowerShell 5.1 читает его как ANSI и портит русский текст.
 param(
-    [ValidateSet("", "check", "install", "build", "testgame", "frame", "tests", "find", "game-check", "port", "victory")]
-    [string]$Step = ""
+    [ValidateSet("", "check", "install", "build", "testgame", "frame", "tests", "find", "game-check", "port", "victory", "settings")]
+    [string]$Step = "",
+    [ValidatePattern('^$|^[A-Za-z]:?\\?$')]
+    [string]$Drive = ""
 )
 Set-StrictMode -Version 2
 $ErrorActionPreference = "Stop"
@@ -26,10 +29,10 @@ $script:Log.AutoFlush = $true
 $script:LastOutput = @()
 
 # VIctory (github.com/Marvisak/VIctory, GPL-3.0-or-later) — родственный загрузчик на Rust; пункт 10 собирает его
-# вне репозитория DSTN. Коммит закреплён: новую версию берите осознанно, поменяв его здесь.
+# вне репозитория DSTN (в <диск>:\DSTN-data\victory или %LOCALAPPDATA%\DSTN\victory). Коммит закреплён: новую
+# версию берите осознанно, поменяв его здесь.
 $VictoryRepo = "https://github.com/Marvisak/VIctory"
 $VictoryCommit = "ffe310eb2098e52169f4c44db5ffdabf43a72622"
-$VictoryDir = Join-Path $env:LOCALAPPDATA "DSTN\victory"
 
 # Компоненты Visual Studio, без которых не собрать загрузчик: компилятор C++ x64, Windows SDK 10.0.26100 (корневые
 # сигнатуры версии 1.2) и CMake с Ninja («C++ CMake tools for Windows»).
@@ -38,6 +41,51 @@ $VsComponents = @(
     "Microsoft.VisualStudio.Component.Windows11SDK.26100",
     "Microsoft.VisualStudio.Component.VC.CMake.Project"
 )
+
+# ---------------------------------------------------------------- настройки (пункт 11)
+
+# Настройки меню — строки «ключ=значение» в logs\settings.txt: Drive (диск для тяжёлых данных), FastBuild (сборка на
+# всех ядрах, по умолчанию да), Sccache (кэш компилятора), LastBuild (quick или full).
+$SettingsFile = Join-Path $LogDir "settings.txt"
+
+function Get-Setting([string]$Name, [string]$Default = "") {
+    if (Test-Path -LiteralPath $SettingsFile) {
+        foreach ($line in @(Get-Content -LiteralPath $SettingsFile -Encoding UTF8)) {
+            if ($line -match '^\s*([^=]+?)\s*=\s*(.*?)\s*$' -and $Matches[1] -eq $Name) { return $Matches[2] }
+        }
+    }
+    return $Default
+}
+
+function Set-Setting([string]$Name, [string]$Value) {
+    $lines = @()
+    if (Test-Path -LiteralPath $SettingsFile) {
+        $pattern = '^\s*' + [regex]::Escape($Name) + '\s*='
+        $lines = @(Get-Content -LiteralPath $SettingsFile -Encoding UTF8 | Where-Object { $_ -notmatch $pattern })
+    }
+    $lines += "$Name=$Value"
+    [System.IO.File]::WriteAllLines($SettingsFile, [string[]]$lines, [System.Text.UTF8Encoding]::new($false))
+}
+
+# Буква диска для тяжёлых данных: ключ -Drive этого запуска, иначе настройка, иначе пусто (папки по умолчанию).
+function Get-DataDrive {
+    $letter = if ($Drive) { $Drive } else { Get-Setting "Drive" }
+    if ($letter) { return $letter.Substring(0, 1).ToUpperInvariant() }
+    return ""
+}
+
+# Корень тяжёлых данных: <диск>:\DSTN-data, а не DSTN, чтобы не совпасть с клоном репозитория в D:\DSTN.
+function Get-DataRoot {
+    $letter = Get-DataDrive
+    if ($letter) { return "${letter}:\DSTN-data" }
+    return ""
+}
+
+function Get-VictoryDir {
+    $dataRoot = Get-DataRoot
+    if ($dataRoot) { return (Join-Path $dataRoot "victory") }
+    return (Join-Path $env:LOCALAPPDATA "DSTN\victory")
+}
 
 # ---------------------------------------------------------------- вывод и журнал
 
@@ -257,7 +305,11 @@ function Step-Check {
     Write-Log "Система:"
     if ([Environment]::Is64BitOperatingSystem) { Write-Ok "Windows x64 ($([Environment]::OSVersion.Version))" }
     else { Write-Missing "Нужна 64-разрядная Windows 10/11" ""; $required++ }
-    $drive = Get-PSDrive -Name ($Root.Substring(0, 1)) -ErrorAction SilentlyContinue
+    $dataDrive = Get-DataDrive
+    if ($dataDrive) { Write-Ok "Диск для тяжёлых данных: $(Get-DataRoot) (пункт 11)" }
+    else { Write-Optional "Диск для тяжёлых данных не выбран" "Порт пойдёт в Documents\DSTN; другой диск выбирается в пункте 11." }
+    $driveLetter = if ($dataDrive) { $dataDrive } else { $Root.Substring(0, 1) }
+    $drive = Get-PSDrive -Name $driveLetter -ErrorAction SilentlyContinue
     if ($drive) {
         $freeGb = [Math]::Round($drive.Free / 1GB)
         if ($freeGb -ge 40) { Write-Ok "Свободно на диске $($drive.Name): $freeGb ГБ" }
@@ -418,8 +470,12 @@ function Step-Install {
         if ((Get-Command git -ErrorAction SilentlyContinue) -and (Find-Python) -and (Find-VisualStudio)) {
             if (Confirm-Yes "Собрать llvm-mc сейчас?") {
                 $powershell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-                $null = Invoke-Logged $powershell @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                                                   (Join-Path $PSScriptRoot "build_llvm_mc.ps1")) $Root
+                $llvmArguments = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $PSScriptRoot "build_llvm_mc.ps1"))
+                $dataRoot = Get-DataRoot
+                if ($dataRoot) {
+                    $llvmArguments += @("-Dest", (Join-Path $dataRoot "llvm-mc"), "-Temp", (Join-Path $dataRoot "tmp\llvm-mc"))
+                }
+                $null = Invoke-Logged $powershell $llvmArguments $Root
                 Update-SessionEnvironment
             }
         } else {
@@ -443,14 +499,34 @@ function Step-Install {
 
 # ---------------------------------------------------------------- шаги 3–6: загрузчик и тестовые игры
 
-function Step-Build {
+function Step-Build([string]$Mode = "") {
     Write-Title "Шаг 3. Сборка загрузчика dstnrt.exe"
-    Write-Log "Первая сборка идёт 10–20 минут, следующие — быстрее."
+    if (-not $Mode) {
+        Write-Log "  1  Быстро: только загрузчик и тестовые игры (хватает для пунктов 4 и 5)"
+        Write-Log "  2  Полностью: ещё и все тестовые программы (нужно для пункта 6, заметно дольше)"
+        $answer = Read-Host "Вариант (Enter — 1)"
+        $Mode = if ($answer -and $answer.Trim() -eq "2") { "full" } else { "quick" }
+    }
+    $arguments = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $PSScriptRoot "build_runtime.ps1"), "-PipeOutput")
+    if ($Mode -eq "quick") { $arguments += "-Quick" }
+    if ((Get-Setting "FastBuild" "1") -eq "1") {
+        $arguments += "-Fast"
+        Write-Log "Сборка на всех ядрах процессора ($([Environment]::ProcessorCount)); выключается в пункте 11."
+    }
+    if ((Get-Setting "Sccache") -eq "1") {
+        if (Get-Command sccache -ErrorAction SilentlyContinue) {
+            $arguments += "-Sccache"
+            Write-Log "Кэш компилятора sccache включён: повторные сборки перекомпилируют только изменённое."
+        } else {
+            Write-Optional "sccache включён в настройках, но не найден" "Пункт 11 поставит его снова."
+        }
+    }
+    Write-Log "Первая сборка идёт несколько минут (полная — до 20), следующие — быстрее."
     $powershell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
-    $code = Invoke-Logged $powershell @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-                                         (Join-Path $PSScriptRoot "build_runtime.ps1"), "-PipeOutput") $Root
+    $code = Invoke-Logged $powershell $arguments $Root
     $loader = Find-Built "dstnrt.exe"
     $ok = ($code -eq 0) -and [bool]$loader
+    if ($ok) { Set-Setting "LastBuild" $Mode }
     Write-Result "Сборка загрузчика" $ok $(if ($ok) { "Файл: $loader" } else { "Код выхода: $code." })
     return $ok
 }
@@ -509,6 +585,11 @@ function Step-Frame {
 
 function Step-Tests {
     Write-Title "Шаг 6. Все тесты загрузчика (CTest)"
+    if ((Get-Setting "LastBuild") -eq "quick") {
+        Write-Log "Последняя сборка была быстрой: тестовых программ в ней нет, а этому пункту нужна полная." Yellow
+        if (-not (Confirm-Yes "Собрать полностью сейчас?")) { return $false }
+        if (-not (Step-Build "full")) { return $false }
+    }
     $ctest = Find-CTest
     if (-not $ctest) {
         Write-Missing "ctest не найден" "Пункт 2 добавит в Visual Studio компонент «C++ CMake tools for Windows»; затем пункт 3."
@@ -568,7 +649,16 @@ function Step-Port {
     if (-not $folder) { return $false }
     $stages = Read-Host "Стадии через запятую (Enter — check,shaders,runtime)"
     if (-not $stages) { $stages = "check,shaders,runtime" }
-    $code = Invoke-Python @("make_game.py", "--game", $folder, "--stages", $stages.Trim())
+    $arguments = @("make_game.py", "--game", $folder, "--stages", $stages.Trim())
+    $dataRoot = Get-DataRoot
+    if ($dataRoot) {
+        $arguments += @("--out", (Join-Path $dataRoot "port"), "--work", (Join-Path $dataRoot "work"))
+        Write-Log "Порт: $(Join-Path $dataRoot 'port'); рабочие файлы: $(Join-Path $dataRoot 'work')."
+    } else {
+        Write-Log "Папки по умолчанию: Documents\DSTN (другой диск выбирается в пункте 11)."
+    }
+    if ((Get-Setting "FastBuild" "1") -eq "1") { $arguments += @("--jobs", "$([Environment]::ProcessorCount)") }
+    $code = Invoke-Python $arguments
     Write-Result "Сборка порта" ($code -eq 0) "Код выхода: $code."
     return ($code -eq 0)
 }
@@ -596,6 +686,7 @@ function Find-TitleExe([string]$Folder) {
 
 function Step-Victory {
     Write-Title "Шаг 10. Запуск через VIctory"
+    $VictoryDir = Get-VictoryDir
     Write-Log "VIctory — отдельный проект (github.com/Marvisak/VIctory, GPL-3.0-or-later) с собственным загрузчиком на Rust."
     Write-Log "По его README игра доходит до меню и загрузки мира, а в самом мире рендеринг пока не работает."
     Write-Log "Он ставится рядом, в $VictoryDir (вне репозитория DSTN), версия $($VictoryCommit.Substring(0, 7))."
@@ -672,6 +763,61 @@ function Step-Victory {
     return ($code -eq 0)
 }
 
+# ---------------------------------------------------------------- шаг 11: настройки
+
+function Step-Settings {
+    Write-Title "Настройки: диск для данных и скорость сборки"
+    $current = Get-DataDrive
+    if ($current) { Write-Log "Диск для тяжёлых данных сейчас: $(Get-DataRoot)" }
+    else { Write-Log "Диск для тяжёлых данных не выбран: Documents\DSTN и %LOCALAPPDATA%\DSTN." }
+    $disks = @(Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DriveType=3" -ErrorAction SilentlyContinue | Sort-Object DeviceID)
+    if ($disks.Count) {
+        Write-Log "Локальные диски:"
+        foreach ($disk in $disks) {
+            $label = if ($disk.VolumeName) { " ($($disk.VolumeName))" } else { "" }
+            Write-Log ("  {0}{1}  свободно {2} ГБ из {3} ГБ" -f $disk.DeviceID, $label,
+                       [Math]::Round($disk.FreeSpace / 1GB), [Math]::Round($disk.Size / 1GB))
+        }
+    }
+    Write-Log "Полной сборке порта нужно около 400 ГБ, шейдерам — около 30 ГБ, VIctory и llvm-mc — по несколько ГБ."
+    $answer = Read-Host "Буква диска (Enter — оставить как есть, минус — вернуть папки по умолчанию)"
+    if ($answer) {
+        $letter = $answer.Trim().TrimEnd(':', '\').ToUpperInvariant()
+        if ($letter -eq "-") {
+            Set-Setting "Drive" ""
+            Write-Ok "Папки по умолчанию"
+        } elseif ($letter -match '^[A-Z]$' -and (Test-Path -LiteralPath "${letter}:\")) {
+            Set-Setting "Drive" $letter
+            Write-Ok "Тяжёлые данные будут в ${letter}:\DSTN-data: порт, рабочие файлы, VIctory, llvm-mc"
+        } else {
+            Write-Missing "Нет такого диска: $answer" ""
+        }
+    }
+
+    Write-Log ""
+    $fast = Confirm-Yes "Собирать на всех ядрах процессора (быстрее, но компьютер будет занят)?"
+    Set-Setting "FastBuild" $(if ($fast) { "1" } else { "0" })
+
+    Write-Log ""
+    Write-Log "Кэш компилятора sccache: после обновления DSTN пересобирается только изменённое."
+    if (Confirm-Yes "Включить кэш компилятора sccache?") {
+        if (-not (Get-Command sccache -ErrorAction SilentlyContinue) -and (Get-Command winget -ErrorAction SilentlyContinue)) {
+            $null = Install-WithWinget "sccache" "Mozilla.sccache"
+        }
+        if (Get-Command sccache -ErrorAction SilentlyContinue) {
+            Set-Setting "Sccache" "1"
+            Write-Ok "sccache включён; следующая сборка (пункт 3) один раз начнётся с чистого кэша CMake."
+        } else {
+            Set-Setting "Sccache" "0"
+            Write-Missing "sccache не найден" "Если он только что установился, закройте окно и запустите Start-DSTN.bat заново."
+        }
+    } else {
+        Set-Setting "Sccache" "0"
+    }
+    Write-Result "Настройки" $true "Сохранены в $SettingsFile."
+    return $true
+}
+
 # ---------------------------------------------------------------- меню
 
 $Steps = [ordered]@{
@@ -685,11 +831,13 @@ $Steps = [ordered]@{
     "8" = @{ Key = "game-check"; Title = "Проверить свою копию игры";                         Run = { Step-GameCheck } }
     "9" = @{ Key = "port";       Title = "Собрать порт из копии (шейдеры и загрузчик)";      Run = { Step-Port } }
     "10" = @{ Key = "victory";   Title = "Запустить свою копию через VIctory (родственный проект)"; Run = { Step-Victory } }
+    "11" = @{ Key = "settings";  Title = "Настройки: диск для данных и скорость сборки";      Run = { Step-Settings } }
 }
 
 Write-Log "DSTN (ДАСТАН) — стартовое меню для Windows. $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" Cyan
 Write-Log "Репозиторий: $Root"
 Write-Log "Журнал: $LogPath"
+if (Get-DataDrive) { Write-Log "Диск для тяжёлых данных: $(Get-DataRoot)" }
 $exitCode = 0
 try {
     if ($Step) {
@@ -701,13 +849,13 @@ try {
             Write-Host ""
             Write-Host "  DSTN — ДАСТАН · что делаем?" -ForegroundColor Cyan
             foreach ($number in $Steps.Keys) { Write-Host ("  {0,2}  {1}" -f $number, $Steps[$number].Title) }
-            Write-Host "  11  Открыть папку с журналами"
+            Write-Host "  12  Открыть папку с журналами"
             Write-Host "   0  Выход"
             $choice = Read-Host "Номер"
             if ($null -eq $choice) { break }
             $choice = $choice.Trim()
             if ($choice -eq "0" -or $choice -eq "") { break }
-            if ($choice -eq "11") { Start-Process explorer.exe $LogDir; continue }
+            if ($choice -eq "12") { Start-Process explorer.exe $LogDir; continue }
             if (-not $Steps.Contains($choice)) { Write-Host "Нет такого пункта: $choice" -ForegroundColor Yellow; continue }
             $null = & $Steps[$choice].Run
         }

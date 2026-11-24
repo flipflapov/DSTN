@@ -1,4 +1,7 @@
 ﻿# Builds runtime\build\dstnrt.exe with MSVC at BelowNormal priority, on half the cores by default.
+# -Fast uses every core at normal priority; -Quick builds only the loader and the stand-in games (CMake target
+# dstn_quick) instead of every test program; -Sccache caches compiler output with sccache, as CI does, so a rebuild
+# after an update recompiles only what changed.
 # Uses VS's CMake + Ninja when the "C++ CMake tools" component is installed (or native Windows cmake + ninja on PATH),
 # otherwise calls cl.exe directly.
 # The GameInput controller shim (SDL3, docs/gameinput.md) is built only on the CMake path: with an installed SDL3, or
@@ -9,9 +12,14 @@ param(
     # Run the build batch in the pipeline instead of straight on the console, so a caller that pipes this script's
     # output (scripts/dstn_start.ps1) gets every CMake, Ninja and compiler line for its log.
     [switch]$PipeOutput,
+    [switch]$Fast,
+    [switch]$Quick,
+    [switch]$Sccache,
     [ValidateRange(1, 2147483647)][int]$jobs = [Math]::Max(1, [int]([Environment]::ProcessorCount / 2))
 )
 $ErrorActionPreference = "Stop"
+if ($Fast -and -not $PSBoundParameters.ContainsKey("jobs")) { $jobs = [Environment]::ProcessorCount }
+$priority = if ($Fast) { "Normal" } else { "BelowNormal" }
 
 function Invoke-ToolProbe([string]$Exe, [string[]]$ProbeArgs) {
     $prev = $ErrorActionPreference
@@ -62,11 +70,30 @@ $cfg = if ($Debug) { "Debug" } else { "RelWithDebInfo" }
 $sdl = if ($FetchSdl3) { "-DDSTN_SDL3_FETCH=ON" } else { "" }
 # With VULKAN_SDK set, a configure that still finds no Vulkan headers fails instead of dropping the Vulkan D3D12 device.
 $vk = if ($env:VULKAN_SDK) { "-DDSTN_REQUIRE_VULKAN=ON" } else { "" }
+$target = if ($Quick) { "--target dstn_quick" } else { "" }
+# sccache needs the debug information inside each object (/Z7, "Embedded"), not in a shared PDB (/Zi); CI configures
+# the same. The launcher is always named (empty without -Sccache) so that switching the mode is not left to a stale
+# cache, and a build folder configured the other way starts from a fresh CMake cache: its flags still carry /Zi.
+if ($Sccache -and -not (Get-Command sccache -ErrorAction SilentlyContinue)) {
+    throw "sccache wasn't found on PATH (winget install Mozilla.sccache)."
+}
+$cacheOn = "-DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_POLICY_DEFAULT_CMP0141=NEW -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded"
+$cacheOff = "-DCMAKE_C_COMPILER_LAUNCHER= -DCMAKE_CXX_COMPILER_LAUNCHER="
+$cache = if ($Sccache) { $cacheOn } else { $cacheOff }
+$cmakeCache = Join-Path $out "CMakeCache.txt"
+if (Test-Path -LiteralPath $cmakeCache) {
+    $cachedWithSccache = [bool](Select-String -LiteralPath $cmakeCache -Pattern "^CMAKE_CXX_COMPILER_LAUNCHER:[A-Z]*=.*sccache" -Quiet)
+    if ($cachedWithSccache -ne [bool]$Sccache) {
+        Write-Host "compiler cache mode changed: starting from a fresh CMake cache in $out"
+        Remove-Item -LiteralPath $cmakeCache -Force
+        Remove-Item -LiteralPath (Join-Path $out "CMakeFiles") -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
 
 if ($cmake -and $ninja) {
     $body = @"
-call "$cmake" -S "$src" -B "$out" -G Ninja "-DCMAKE_MAKE_PROGRAM=$ninja" -DCMAKE_BUILD_TYPE=$cfg $sdl $vk || exit /b 1
-call "$cmake" --build "$out" -j $jobs || exit /b 1
+call "$cmake" -S "$src" -B "$out" -G Ninja "-DCMAKE_MAKE_PROGRAM=$ninja" -DCMAKE_BUILD_TYPE=$cfg $sdl $vk $cache || exit /b 1
+call "$cmake" --build "$out" -j $jobs $target || exit /b 1
 "@
 } else {
     # Keep this list in step with runtime\CMakeLists.txt. Optional parts that need a dependency are left out here:
@@ -110,10 +137,10 @@ $batchText = "@echo off`r`nchcp 65001 >nul`r`nset `"PATH=$installer;%PATH%`"`r`n
 [System.IO.File]::WriteAllText($bat, $batchText, [System.Text.UTF8Encoding]::new($false))
 
 if ($PipeOutput) {
-    # cmd.exe and the compiler inherit BelowNormal from this process. --% hands cmd.exe the same /s /c ""path"" as the
+    # cmd.exe and the compiler inherit this process's priority (BelowNormal unless -Fast). --% hands cmd.exe the same /s /c ""path"" as the
     # Start-Process line below (PowerShell only expands %DSTN_BUILD_CMD%), so a path holding & or ^ stays quoted;
     # the 2>&1 is cmd.exe's, which merges the compiler's stderr into the output.
-    try { (Get-Process -Id $PID).PriorityClass = "BelowNormal" } catch {}
+    try { (Get-Process -Id $PID).PriorityClass = $priority } catch {}
     try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
     $env:DSTN_BUILD_CMD = $bat
     & cmd.exe --% /s /c ""%DSTN_BUILD_CMD%"" 2>&1
@@ -125,7 +152,7 @@ if ($PipeOutput) {
 # /s with a second pair of quotes: cmd.exe strips only the outer pair, so a path holding & or ^ stays quoted.
 $p = Start-Process cmd.exe -ArgumentList "/s", "/c", "`"`"$bat`"`"" -NoNewWindow -PassThru
 $null = $p.Handle  # keeps the exit code readable after WaitForExit
-try { $p.PriorityClass = "BelowNormal" } catch {}
+try { $p.PriorityClass = $priority } catch {}
 $p.WaitForExit()
 if ($p.ExitCode -ne 0) { throw "build failed ($($p.ExitCode))" }
 Write-Host "built $out\dstnrt.exe"

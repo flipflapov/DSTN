@@ -2889,3 +2889,14 @@ else()
   include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/vulkan_headers_missing.cmake")
   dstn_vulkan_headers_missing()
 endif()
+
+# The quick build of Start-DSTN.bat (scripts/build_runtime.ps1 -Quick): the loader, its TLS helper and the stand-in
+# games the start menu runs (with tiny_frame's probe), instead of the hundreds of test programs a full build makes.
+# Defined last, so every target it may name exists; the ones a configuration leaves out (no Vulkan, not Windows)
+# are skipped.
+add_custom_target(dstn_quick)
+foreach(_dstn_quick_target dstnrt dstnrt_tls_host tiny_game tiny_game_fixed tiny_frame d3d12_com_test)
+  if(TARGET ${_dstn_quick_target})
+    add_dependencies(dstn_quick ${_dstn_quick_target})
+  endif()
+endforeach()
