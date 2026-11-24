@@ -413,6 +413,7 @@ test('Shift speeds the camera up and Ctrl slows it down, on either side of the k
         devicePixelRatio: 1, innerWidth: 800, innerHeight: 600, URLSearchParams, location: { search: '' },
         performance: { now: () => 0 },
         fetch: manifestResponse({ spawn: [0, 0, 0], chunks: [] }), GLTFLoader: class {},
+        AbortController, setTimeout, clearTimeout,   // the world load aborts a stalled manifest fetch
     });
     // One frame is 0.1 s at the default 40 m/s, so E alone climbs 4 m.
     const climb = (...modifiers) => {

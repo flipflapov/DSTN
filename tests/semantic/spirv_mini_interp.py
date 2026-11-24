@@ -1040,8 +1040,14 @@ def _invocation(text, inputs, push_constants, memory, step=False, workgroup=None
             else:
                 values[res] = fma_f32(x, y, z)
         elif op == "OpFNegate":
-            negated = -val(a[1])
-            values[res] = negated if types.t[a[0]] == ("float", 64) else f32(negated)
+            x = val(a[1])
+            if types.t[a[0]] != ("float", 64) and isinstance(x, _F32):
+                # A sign-bit operation on a known pattern: flip bit 31 only, so a signalling NaN stays signalling,
+                # as GPUs and RDNA2's neg modifier do (Python's float negation would quiet it through a double).
+                values[res] = _F32(x.bits ^ 0x80000000)
+            else:
+                negated = -x
+                values[res] = negated if types.t[a[0]] == ("float", 64) else f32(negated)
         elif op == "OpQuantizeToF16":
             # Single-instruction f32 -> f16 -> f32 round to nearest, with the
             # SPIR-V subnormal rule: a magnitude too small for a normal f16
@@ -1123,8 +1129,11 @@ def _invocation(text, inputs, push_constants, memory, step=False, workgroup=None
             elif name in ("Sin", "Cos"):
                 values[res] = f32(math.sin(args[0]) if name == "Sin" else math.cos(args[0]))
             elif name == "FAbs":
-                magnitude = abs(args[0])
-                values[res] = magnitude if types.t[a[0]] == ("float", 64) else f32(magnitude)
+                if types.t[a[0]] != ("float", 64) and isinstance(args[0], _F32):
+                    values[res] = _F32(args[0].bits & 0x7FFFFFFF)   # clear bit 31 only, as OpFNegate flips it
+                else:
+                    magnitude = abs(args[0])
+                    values[res] = magnitude if types.t[a[0]] == ("float", 64) else f32(magnitude)
             elif name == "FSign":
                 # GLSL.std.450: 1.0 if x > 0, 0.0 if x = 0 (keeping the zero's sign), -1.0 if x < 0
                 x = args[0]

@@ -1422,9 +1422,9 @@ def run_suite(a, work: str) -> int:
             raw = os.path.join(raw_dir, f"{name}.raw")
             env = mesh_env(spirv_dir, name, gfx_env)
             rc, msg = run_readback(raw, run_cmd, [vk_harness, spv, fs_passthru, raw], env=env)
-            # ms_w64x_ballot needs exact wave64 (a 64-wide subgroup, or --wave64-emulate): skip it elsewhere, as
-            # the wave64 compute dumps are.
-            no64 = (name == "ms_w64x_ballot" and not w64_emulated() and
+            # ms_w64x_ballot and ms_wave_info_s3 need exact wave64 (a 64-wide subgroup, or --wave64-emulate): skip
+            # them elsewhere, as the wave64 compute dumps are and as check.py's mesh_w64x_test does for both.
+            no64 = (name in ("ms_w64x_ballot", "ms_wave_info_s3") and not w64_emulated() and
                     not any(int(x) >= 64 for x in re.findall(r"subgroup \d+\.\.(\d+)", msg)))
             if rc == UNSUPPORTED:
                 results.append((name, None, unsupported_skip(msg)))
