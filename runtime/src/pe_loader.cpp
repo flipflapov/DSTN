@@ -106,7 +106,7 @@ IMAGE_TLS_DIRECTORY64* tls_directory(Module& m) {
 // loader can allocate a module index, so the runtime ships a minimal DLL whose only content is a TLS anchor
 // (src/tls_host.cpp). Loading it makes the OS reserve an index and give every thread a block for it; the native loader
 // reuses that index for the mapped image. When more than one manually mapped module uses static TLS at once, the loader
-// clones gta6rt_tls_host.dll to a per-process temporary path on demand and loads it, so the OS assigns an independent
+// clones dstnrt_tls_host.dll to a per-process temporary path on demand and loads it, so the OS assigns an independent
 // module TLS index for each simultaneous module (up to kMaxMappedTlsModules).
 constexpr DWORD kMaxModuleTlsSlots = 64;
 constexpr size_t kMaxMappedTlsModules = 16;
@@ -132,7 +132,7 @@ std::filesystem::path tls_host_base_path() {
         }
         size *= 2;
     }
-    return std::filesystem::path(exe_path).parent_path() / L"gta6rt_tls_host.dll";
+    return std::filesystem::path(exe_path).parent_path() / L"dstnrt_tls_host.dll";
 }
 
 std::filesystem::path tls_host_clone_dir() {
@@ -167,9 +167,9 @@ void cleanup_tls_clones_internal() {
 
 void cleanup_tls_clones_at_exit() { cleanup_tls_clones_internal(); }
 
-// The owner process named by "leonida_tls_host_<pid>_<slot>.dll"; 0 when the name does not carry one.
+// The owner process named by "dstn_tls_host_<pid>_<slot>.dll"; 0 when the name does not carry one.
 DWORD clone_owner_pid(const wchar_t* name) {
-    constexpr wchar_t prefix[] = L"leonida_tls_host_";
+    constexpr wchar_t prefix[] = L"dstn_tls_host_";
     const wchar_t* p = name;
     for (size_t i = 0; i < sizeof(prefix) / sizeof(wchar_t) - 1; ++i)
         if (*p++ != prefix[i]) return 0;
@@ -197,7 +197,7 @@ bool process_alive(DWORD pid) {
 // (or DeleteFileW fails harmlessly), and a concurrent process between CopyFileW and LoadLibraryExW keeps its file.
 void sweep_stale_tls_clones(const std::filesystem::path& dir) {
     WIN32_FIND_DATAW fd{};
-    const std::filesystem::path pattern = dir / L"leonida_tls_host_*.dll";
+    const std::filesystem::path pattern = dir / L"dstn_tls_host_*.dll";
     HANDLE h = FindFirstFileW(pattern.c_str(), &fd);
     if (h == INVALID_HANDLE_VALUE) return;
     do {
@@ -244,7 +244,7 @@ TlsHostModule load_tls_host_image(const std::filesystem::path& path, bool hook_t
     if (hook_thread_events) {
         // Only the primary helper reports thread attach/detach events; on_host_thread_event iterates all active slots.
         using SetThreadEvent = void(__cdecl*)(void(__cdecl*)(DWORD));
-        if (auto set = reinterpret_cast<SetThreadEvent>(GetProcAddress(host.module, "gta6rt_tls_host_set_thread_event")))
+        if (auto set = reinterpret_cast<SetThreadEvent>(GetProcAddress(host.module, "dstnrt_tls_host_set_thread_event")))
             set(&on_host_thread_event);
     }
     return host;
@@ -269,7 +269,7 @@ TlsHostModule ensure_tls_host(size_t slot) {
         if (g_tls_hosts[0].index == TLS_OUT_OF_INDEXES) return {};
     }
 
-    // Clone gta6rt_tls_host.dll to a distinct path using CopyFileW (Wine 9 lacks CopyFile2 used by std::filesystem).
+    // Clone dstnrt_tls_host.dll to a distinct path using CopyFileW (Wine 9 lacks CopyFile2 used by std::filesystem).
     const std::filesystem::path dir = tls_host_clone_dir();
     static bool swept = false;
     if (!swept) {
@@ -278,7 +278,7 @@ TlsHostModule ensure_tls_host(size_t slot) {
         std::atexit(&cleanup_tls_clones_at_exit);
     }
     const std::wstring name =
-        L"leonida_tls_host_" + std::to_wstring(GetCurrentProcessId()) + L"_" + std::to_wstring(slot) + L".dll";
+        L"dstn_tls_host_" + std::to_wstring(GetCurrentProcessId()) + L"_" + std::to_wstring(slot) + L".dll";
     const std::filesystem::path clone_path = dir / name;
     // The staging name must not match the sweep pattern, which only covers final clone names ending in .dll.
     const std::filesystem::path staging = clone_path.wstring() + L".new";
@@ -739,7 +739,7 @@ void release_existing_blocks_of_this_thread() {
     state.ended.push_back(self);
 }
 
-// Runs in gta6rt_tls_host.dll's DllMain for each thread the process starts or ends once the helper is loaded, under
+// Runs in dstnrt_tls_host.dll's DllMain for each thread the process starts or ends once the helper is loaded, under
 // the Windows loader lock, on that thread. A new thread gets its own copy of each active TLS owner's template; an
 // ending one gives each helper's block back before the Windows loader frees it. TLS callbacks get the thread events
 // only after the module's DLL_PROCESS_ATTACH (initialise()), as the Windows loader orders them.
@@ -1207,7 +1207,7 @@ Module& Loader::map_image(const std::filesystem::path& path, const std::string& 
     by_name_[module_key(path)] = m;
     order_.push_back(m);
 
-    // Inside the range gta6rt reserved for this image before the process started (base_reservation.h), else as usual.
+    // Inside the range dstnrt reserved for this image before the process started (base_reservation.h), else as usual.
     m->base = static_cast<uint8_t*>(base_reservation::commit_reserved(oh.ImageBase, oh.SizeOfImage));
     if (!m->base)
         m->base = static_cast<uint8_t*>(VirtualAlloc(reinterpret_cast<void*>(oh.ImageBase), oh.SizeOfImage,
@@ -1292,7 +1292,7 @@ Module& Loader::map_image(const std::filesystem::path& path, const std::string& 
 // zero-fill size; it has no field naming the TLS block. The Windows loader allocates a block per module per thread and
 // puts it in TEB->ThreadLocalStoragePointer[module index], which is what __declspec(thread) code reads via _tls_index.
 // Only the OS loader can allocate that module index, so the loader reuses the index the OS assigned to
-// gta6rt_tls_host.dll and maps a fresh clone of the helper for every additional simultaneous TLS module, each clone
+// dstnrt_tls_host.dll and maps a fresh clone of the helper for every additional simultaneous TLS module, each clone
 // getting its own index. All kMaxMappedTlsModules slots can be live at once; a further module is rejected rather than
 // silently sharing (and corrupting) a slot.
 void Loader::initialize_tls(Module& m) {
@@ -1332,11 +1332,11 @@ void Loader::initialize_tls(Module& m) {
             throw std::runtime_error(m.name + ": all " + std::to_string(kMaxMappedTlsModules) +
                                      " manually mapped static TLS slots are in use");
 
-        // Load/clone gta6rt_tls_host.dll OUTSIDE ExclusiveTlsLock so LoadLibraryExW cannot deadlock with
+        // Load/clone dstnrt_tls_host.dll OUTSIDE ExclusiveTlsLock so LoadLibraryExW cannot deadlock with
         // on_host_thread_event (which runs under the Windows loader lock and takes SharedTlsLock).
         index = ensure_tls_host(slot).index;
         if (index == TLS_OUT_OF_INDEXES)
-            throw std::runtime_error(m.name + ": gta6rt_tls_host.dll is missing or has no module TLS index");
+            throw std::runtime_error(m.name + ": dstnrt_tls_host.dll is missing or has no module TLS index");
         if (index >= kMaxModuleTlsSlots) throw std::runtime_error(m.name + ": reserved TLS index is out of range");
 
         // The fields are complete before a thread event can see the owner.

@@ -198,9 +198,9 @@ class RuntimeBuildPreflightTest(unittest.TestCase):
         err = io.StringIO()
         with tempfile.TemporaryDirectory() as build:
             with self.assertRaises(SystemExit) as ctx:
-                self.preflight(build, ["gta6rt.exe"], err=err)
+                self.preflight(build, ["dstnrt.exe"], err=err)
             self.assertEqual(ctx.exception.code, 1)
-            self.assertIn("gta6rt_tls_host.dll", err.getvalue())
+            self.assertIn("dstnrt_tls_host.dll", err.getvalue())
             self.assertFalse(os.path.exists(os.path.join(build, "w")))
 
 
@@ -212,14 +212,14 @@ class RuntimePackagingTest(unittest.TestCase):
         self.out = os.path.join(self.root, "out")
         os.makedirs(self.build)
         os.makedirs(self.game)
-        self.write_artifact("gta6rt.exe", b"runtime")
+        self.write_artifact("dstnrt.exe", b"runtime")
 
     def write_artifact(self, name, contents):
         with open(os.path.join(self.build, name), "wb") as f:
             f.write(contents)
 
     def test_first_load_hint(self):
-        self.write_artifact("gta6rt_tls_host.dll", b"TLS host")
+        self.write_artifact("dstnrt_tls_host.dll", b"TLS host")
         image = "Player's Test.exe"
         out = os.path.join(self.root, "Port Files")
         for platform in ("nt", "posix"):
@@ -232,10 +232,10 @@ class RuntimePackagingTest(unittest.TestCase):
                 command = log.call_args.args[0].splitlines()[-1].strip()
                 if platform == "nt":
                     self.assertIn("--dry-run", command)
-                    self.assertIn("gta6rt.exe'", command)
+                    self.assertIn("dstnrt.exe'", command)
                     self.assertIn("Player''s Test.exe'", command)
                 else:
-                    self.assertEqual(shlex.split(command), [os.path.join(out, "gta6rt.sh"), "--dry-run"])
+                    self.assertEqual(shlex.split(command), [os.path.join(out, "dstnrt.sh"), "--dry-run"])
                 os.remove(path)
                 make_game.runtime(self.game, out, {"expected_exe": image}, self.build)
                 self.assertIn("is missing", log.call_args.args[0])
@@ -245,15 +245,15 @@ class RuntimePackagingTest(unittest.TestCase):
     def test_wine_first_boot_uses_the_packaged_game_and_shader_paths(self):
         image = "Player's test.exe"
         work = os.path.join(self.root, "Shader cache '$HOME'")
-        self.write_artifact("gta6rt_tls_host.dll", b"")
-        self.write_artifact("gta6rt.exe", b"import os, sys, json\n"
-                            b"print(json.dumps([os.getcwd(), sys.argv[1:], os.getenv('LEONIDA_SHADERS'), "
-                            b"os.getenv('LEONIDA_D3D12')]))\n")
+        self.write_artifact("dstnrt_tls_host.dll", b"")
+        self.write_artifact("dstnrt.exe", b"import os, sys, json\n"
+                            b"print(json.dumps([os.getcwd(), sys.argv[1:], os.getenv('DSTN_SHADERS'), "
+                            b"os.getenv('DSTN_D3D12')]))\n")
         make_game.runtime(self.game, self.out, {"expected_exe": image}, self.build, work=work)
-        launcher = os.path.join(self.out, "gta6rt.sh")
+        launcher = os.path.join(self.out, "dstnrt.sh")
         env = dict(os.environ, WINE=sys.executable)
-        env.pop("LEONIDA_D3D12", None)
-        env.pop("LEONIDA_SHADERS", None)
+        env.pop("DSTN_D3D12", None)
+        env.pop("DSTN_SHADERS", None)
         missing = subprocess.run([launcher, "--run"], cwd=self.root, env=env, capture_output=True, text=True)
         self.assertNotEqual(missing.returncode, 0)
         self.assertIn(image, missing.stderr)
@@ -266,7 +266,7 @@ class RuntimePackagingTest(unittest.TestCase):
                     self.game, [mode, "./" + image, "--overlay", "Z:" + self.out + "/overlay"],
                     None, "vulkan",
                 ])
-        env.update(LEONIDA_SHADERS="D:/custom", LEONIDA_D3D12="trace")
+        env.update(DSTN_SHADERS="D:/custom", DSTN_D3D12="trace")
         result = subprocess.check_output([launcher, "--run"], cwd=self.root, env=env)
         self.assertEqual(json.loads(result)[2:], ["D:/custom", "trace"])
         result = subprocess.check_output([launcher, "--run", "other.exe", "--", "two words"], cwd=self.root, env=env)
@@ -276,12 +276,12 @@ class RuntimePackagingTest(unittest.TestCase):
         make_game.runtime(self.game, self.out, {"expected_exe": image}, self.build, work=work)
         moved = self.out + " moved"
         os.rename(self.out, moved)
-        env.pop("LEONIDA_SHADERS")
-        result = subprocess.check_output([os.path.join(moved, "gta6rt.sh"), "--dry-run"], cwd=self.root, env=env)
+        env.pop("DSTN_SHADERS")
+        result = subprocess.check_output([os.path.join(moved, "dstnrt.sh"), "--dry-run"], cwd=self.root, env=env)
         self.assertEqual(json.loads(result)[2], "Z:" + moved + "/Shader cache '$HOME'/shaders/spirv")
 
     def test_runtime_records_shader_work_directory(self):
-        self.write_artifact("gta6rt_tls_host.dll", b"TLS host")
+        self.write_artifact("dstnrt_tls_host.dll", b"TLS host")
         work = os.path.join(self.root, "Shader Work \u03bb")
         with mock.patch.object(make_game, "log"):
             make_game.runtime(self.game, self.out, {"expected_exe": "game.exe"}, self.build, work=work)
@@ -297,13 +297,13 @@ class RuntimePackagingTest(unittest.TestCase):
             make_game.runtime(self.game, self.out, {"expected_exe": "game.exe"})
 
     def test_runtime_copies_executable_and_tls_host_together(self):
-        self.write_artifact("gta6rt_tls_host.dll", b"TLS host")
+        self.write_artifact("dstnrt_tls_host.dll", b"TLS host")
 
         self.package()
 
-        with open(os.path.join(self.out, "gta6rt.exe"), "rb") as f:
+        with open(os.path.join(self.out, "dstnrt.exe"), "rb") as f:
             self.assertEqual(f.read(), b"runtime")
-        with open(os.path.join(self.out, "gta6rt_tls_host.dll"), "rb") as f:
+        with open(os.path.join(self.out, "dstnrt_tls_host.dll"), "rb") as f:
             self.assertEqual(f.read(), b"TLS host")
         with open(os.path.join(self.out, "game_path.txt"), encoding="utf-8") as f:
             self.assertEqual(f.read(), self.game)
@@ -314,14 +314,14 @@ class RuntimePackagingTest(unittest.TestCase):
             self.package()
 
         self.assertEqual(ctx.exception.code, 1)
-        self.assertIn("gta6rt_tls_host.dll", err.getvalue())
+        self.assertIn("dstnrt_tls_host.dll", err.getvalue())
         self.assertFalse(os.path.exists(self.out))
 
     def test_runtime_build_starts_powershell_by_its_full_path(self):
         # The stage started "powershell" by name. CreateProcess searches System32 but not
         # System32\WindowsPowerShell\v1.0, so on a PC whose PATH had lost that folder the stage ended in a
         # FileNotFoundError traceback after the earlier stages had run.
-        self.write_artifact("gta6rt_tls_host.dll", b"TLS host")
+        self.write_artifact("dstnrt_tls_host.dll", b"TLS host")
         system_root = os.path.join(self.root, "Windows")
         folder = os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0")
         os.makedirs(folder)
@@ -402,11 +402,11 @@ class CrossBuildTest(unittest.TestCase):
                                      "-G", "Ninja", "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
                                      "--toolchain", toolchain, "-DXWIN_DIR=/sdk"])
         self.assertEqual(build, ["cmake", "--build", self.build, "--parallel", "4",
-                                 "--target", "gta6rt", "gta6rt_tls_host"])
+                                 "--target", "dstnrt", "dstnrt_tls_host"])
         for name in make_game.RUNTIME_FILES:
             with open(os.path.join(self.out, name), "rb") as f:
                 self.assertEqual(f.read(), name.encode())
-        self.assertTrue(os.path.isfile(os.path.join(self.out, "gta6rt.sh")))
+        self.assertTrue(os.path.isfile(os.path.join(self.out, "dstnrt.sh")))
 
     def test_versioned_tools_are_passed_until_the_folder_records_its_tools(self):
         for cache in (False, True):
@@ -471,11 +471,11 @@ class RuntimeBuildPackagingTest(unittest.TestCase):
             for name in make_game.RUNTIME_FILES:
                 with open(os.path.join(out, name), "rb") as f:
                     self.assertEqual(f.read(), name.encode())
-            launcher = os.path.join(out, "gta6rt.sh")
+            launcher = os.path.join(out, "dstnrt.sh")
             with open(launcher, encoding="utf-8") as f:
                 text = f.read()
             self.assertTrue(text.startswith("#!/bin/sh\n"))
-            self.assertIn('"${WINE:-wine}" "$here/gta6rt.exe" "$@"', text)
+            self.assertIn('"${WINE:-wine}" "$here/dstnrt.exe" "$@"', text)
             if os.name != "nt":
                 self.assertTrue(os.access(launcher, os.X_OK))
 

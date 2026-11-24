@@ -4,10 +4,10 @@
 //
 // An EXE without a .reloc directory can only run at its ImageBase (0x140000000 by default). Windows and x86-64 Wine
 // leave that range alone, but arm64 Wine on macOS (CrossOver's arm64 bottles, whose x86-64 code runs under FEX) puts
-// its own start-up allocations at 0x100000000 and up, over that range, before gta6rt's first line runs. So gta6rt
+// its own start-up allocations at 0x100000000 and up, over that range, before dstnrt's first line runs. So dstnrt
 // starts itself again, suspended, reserves [ImageBase, ImageBase + SizeOfImage) in that child before any of its code
 // runs, and resumes it; the child's loader then commits the image inside the reservation (commit_reserved), so
-// nothing else can take the range in between. The child is told by LEONIDA_BASE_RESERVED=<base>:<size> (hex), which
+// nothing else can take the range in between. The child is told by DSTN_BASE_RESERVED=<base>:<size> (hex), which
 // also stops it from starting itself again. Measured on CrossOver Preview 20260821 (arm64 bottle, M2 Max): in a
 // suspended child 0x140000000-0x170000000 is free and reservable; macOS maps its own regions above that (the arm64
 // shared region starts at 0x180000000), so a range there can't be had either way.
@@ -28,14 +28,14 @@
 
 namespace rt::base_reservation {
 
-inline constexpr wchar_t kVariable[] = L"LEONIDA_BASE_RESERVED";
+inline constexpr wchar_t kVariable[] = L"DSTN_BASE_RESERVED";
 
 struct Range {
     std::uint64_t base = 0;
     std::uint64_t size = 0;
 };
 
-// The range this process was started with (LEONIDA_BASE_RESERVED), if any.
+// The range this process was started with (DSTN_BASE_RESERVED), if any.
 inline std::optional<Range> inherited() {
     wchar_t value[64] = {};
     const DWORD length = GetEnvironmentVariableW(kVariable, value, 64);
@@ -117,7 +117,7 @@ inline int relaunch(const Range& r) {
     std::fflush(stderr);
     if (!CreateProcessW(self, command_line.data(), nullptr, nullptr, TRUE, CREATE_SUSPENDED, nullptr, nullptr,
                         &startup, &process)) {
-        std::fprintf(stderr, "error: starting gta6rt again to reserve the image range failed (%lu)\n", GetLastError());
+        std::fprintf(stderr, "error: starting dstnrt again to reserve the image range failed (%lu)\n", GetLastError());
         return 1;
     }
     const auto abandon = [&process] {  // the child never ran: end it and release its handles
@@ -138,7 +138,7 @@ inline int relaunch(const Range& r) {
     if (ResumeThread(process.hThread) == static_cast<DWORD>(-1)) {  // still suspended: the wait would never end
         const DWORD error = GetLastError();
         abandon();
-        std::fprintf(stderr, "error: resuming the relaunched gta6rt failed (%lu)\n", error);
+        std::fprintf(stderr, "error: resuming the relaunched dstnrt failed (%lu)\n", error);
         return 1;
     }
     WaitForSingleObject(process.hProcess, INFINITE);

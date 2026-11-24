@@ -8,7 +8,7 @@ default: Lucia's player model and cs_mandy), it finds every place the executable
 (an immediate such as `mov ecx, 0xE472B687`) and the direct calls (E8 rel32) in the next --window bytes. Each call
 target is a candidate; candidates are ranked by how many of the hashes lead to them, then by how many direct calls
 the whole image makes to them. RAGE's archetype lookup by hash takes the hash and is called from hundreds of places,
-so it should rank first; pass its RVA to `gta6rt --archetype-lookup`.
+so it should rank first; pass its RVA to `dstnrt --archetype-lookup`.
 
 Standard library only. No game data is written: the report holds RVAs and counts.
 """

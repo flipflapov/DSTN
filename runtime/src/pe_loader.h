@@ -3,7 +3,7 @@
 // installs static TLS for the calling thread.
 // Mapping never runs code from the image. Loader::initialise() delivers process attach to TLS callbacks and DllMain;
 // ~Loader() delivers process detach before unmapping initialised modules. The TLS slot and template are set up by load().
-// gta6rt_tls_host.dll must sit next to the executable; the loader reuses the module TLS index the OS assigns it.
+// dstnrt_tls_host.dll must sit next to the executable; the loader reuses the module TLS index the OS assigns it.
 #pragma once
 #include <cstdint>
 #include <filesystem>
@@ -49,7 +49,7 @@ struct Module {
     // Static TLS (IMAGE_DIRECTORY_ENTRY_TLS). load() installs tls_block in the calling thread and writes tls_index to
     // the image's _tls_index. tls_index names TEB->ThreadLocalStoragePointer[tls_index], the array
     // __declspec(thread) reads; it is not a TlsAlloc slot. The loader reserves distinct indices by loading
-    // gta6rt_tls_host.dll (and cloning it on demand for additional simultaneous TLS modules, up to 16 at a time).
+    // dstnrt_tls_host.dll (and cloning it on demand for additional simultaneous TLS modules, up to 16 at a time).
     // Every thread started after load() gets its own copy through the helper's DLL_THREAD_ATTACH, and gives it back
     // at DLL_THREAD_DETACH. A thread that was already running gets its copy from load() itself, as it would from
     // Windows for a DLL Windows loads: a block, no DLL_THREAD_ATTACH, and DLL_THREAD_DETACH when it ends.
@@ -67,7 +67,7 @@ struct Module {
 class Loader {
 public:
     // Also registers the module list with the shim registry, so an unimplemented import called under
-    // LEONIDA_UNIMPLEMENTED=stop can name the module and RVA of its caller.
+    // DSTN_UNIMPLEMENTED=stop can name the module and RVA of its caller.
     explicit Loader(std::filesystem::path game_dir);
     Loader(const Loader&) = delete;
     Loader& operator=(const Loader&) = delete;

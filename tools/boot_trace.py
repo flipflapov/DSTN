@@ -1,6 +1,6 @@
-"""Summarize `gta6rt`'s two first-boot traces: the startup JSONL and the `[d3d12-trace]` lines.
+"""Summarize `dstnrt`'s two first-boot traces: the startup JSONL and the `[d3d12-trace]` lines.
 
-The loader writes the startup trace with `gta6rt --trace FILE` (one JSON object per line, flushed per event so it
+The loader writes the startup trace with `dstnrt --trace FILE` (one JSON object per line, flushed per event so it
 survives a crash; `runtime/README.md`, "Startup trace"), and the D3D12 proxy writes one `[d3d12-trace] #<seq>
 <method> <outcome>` line to stderr with `--trace-d3d12`. This tool turns both into the small report a first-boot
 triage needs: modules, unimplemented calls and their callers, DllMain/TLS results, exceptions and the exit, then
@@ -292,9 +292,9 @@ def format_text(summary: dict, limit: int) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="Summarize gta6rt's startup and D3D12 first-boot traces."
+        description="Summarize dstnrt's startup and D3D12 first-boot traces."
     )
-    ap.add_argument("startup", nargs="?", help="the JSONL written by gta6rt --trace")
+    ap.add_argument("startup", nargs="?", help="the JSONL written by dstnrt --trace")
     ap.add_argument("--d3d12", help="the stderr log written with --trace-d3d12")
     ap.add_argument("--json", action="store_true", help="print the summary as JSON")
     ap.add_argument(

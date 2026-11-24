@@ -1,6 +1,6 @@
-"""Run tiny_frame under `gta6rt --run --trace-d3d12` on the Vulkan D3D12 device and check the run from outside.
+"""Run tiny_frame under `dstnrt --run --trace-d3d12` on the Vulkan D3D12 device and check the run from outside.
 
-    python -I check_tiny_frame.py <gta6rt.exe> <tiny_frame.exe> [--probe d3d12_com_test.exe] [--runner wine ...]
+    python -I check_tiny_frame.py <dstnrt.exe> <tiny_frame.exe> [--probe d3d12_com_test.exe] [--runner wine ...]
 
 Checks the guest's verdict and exit code, that the loader's report binds d3d12_xs.dll!D3D12XboxCreateDevice to the
 shim, and that the D3D12 trace is a gapless numbered sequence in which the calls a first frame needs appear in
@@ -73,7 +73,7 @@ def check_output(code, output):
     if any(line.startswith("tiny_frame: FAIL") for line in lines):
         problems.append("the guest reported a failed check")
     if "game exited with code 0" not in lines:
-        problems.append("gta6rt did not report `game exited with code 0`")
+        problems.append("dstnrt did not report `game exited with code 0`")
     if not any(re.fullmatch(r" +shim +d3d12_xs\.dll!D3D12XboxCreateDevice", line) for line in lines):
         problems.append("d3d12_xs.dll!D3D12XboxCreateDevice was not bound to the shim")
     try:
@@ -90,7 +90,7 @@ def check_output(code, output):
 
 
 # Left set in a game's environment, these would put every D3D12 queue of the game on one VkQueue.
-QUEUE_TEST_SETTINGS = {"LEONIDA_VK_MAX_QUEUES_PER_FAMILY": "1", "LEONIDA_VK_GRAPHICS_FAMILY_ONLY": "1"}
+QUEUE_TEST_SETTINGS = {"DSTN_VK_MAX_QUEUES_PER_FAMILY": "1", "DSTN_VK_GRAPHICS_FAMILY_ONLY": "1"}
 
 
 def check_queue_test_settings_ignored(output):
@@ -124,7 +124,7 @@ def main():
             print("SKIP: no usable Vulkan device (the probe test skipped)")
             return SKIP
 
-    environment = dict(os.environ, LEONIDA_D3D12="vulkan")
+    environment = dict(os.environ, DSTN_D3D12="vulkan")
     if options.queue_test_settings:
         environment.update(QUEUE_TEST_SETTINGS)
     run = subprocess.run([*options.runner, options.loader, "--run", os.path.basename(options.guest), "--trace-d3d12"],
@@ -139,7 +139,7 @@ def main():
         for problem in problems:
             print(f"FAIL: {problem}")
         return 1
-    print("tiny_frame under gta6rt --run on the Vulkan D3D12 device: OK")
+    print("tiny_frame under dstnrt --run on the Vulkan D3D12 device: OK")
     return 0
 
 

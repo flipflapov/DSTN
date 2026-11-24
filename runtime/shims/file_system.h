@@ -2,7 +2,7 @@
 //
 // A title's file API sees the console's drives: "GAME:\\data\\shaders\\x.sps" is a file inside the installed game
 // folder. ivall/xcl (GPL-2.0-only; facts only here) documents for Xbox Series GDK titles that GAME: names the game
-// folder and that writes go to a writable overlay rather than to the package, which is read-only. gta6rt does the
+// folder and that writes go to a writable overlay rather than to the package, which is read-only. dstnrt does the
 // same:
 //   GAME:<rest>    a read opens the overlay copy when one exists, else <game dir>\<rest>;
 //                  an open that can write opens <overlay dir>\<rest>, copying the package file there first when the
@@ -20,7 +20,7 @@
 
 namespace rt::fs {
 
-inline constexpr wchar_t kPersistentStorageDir[] = L".gta6rt-persistent";
+inline constexpr wchar_t kPersistentStorageDir[] = L".dstnrt-persistent";
 
 // Sets the roots. main.cpp calls this once, before anything is mapped; the test calls it per case. The overlay is
 // created on the first write, not here.

@@ -17,7 +17,7 @@
 } while (0)
 
 int main() {
-    using namespace leonida::gfx10;
+    using namespace dstn::gfx10;
     using detail::get;
 
     // ---- T# ----

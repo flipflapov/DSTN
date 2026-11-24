@@ -25,16 +25,16 @@ class FirstLookShimReportTest(unittest.TestCase):
                          "tools/gdk_runtime_classes.json", "tools/find_hash_lookup.py", "tools/exe_checklist.py"):
                 (root / name).parent.mkdir(exist_ok=True)
                 shutil.copyfile(source / name, root / name)
-            loader = root / "runtime/build/gta6rt.exe"
+            loader = root / "runtime/build/dstnrt.exe"
             loader.parent.mkdir(parents=True)
             loader.touch()
-            loader.with_name("gta6rt_tls_host.dll").touch()
+            loader.with_name("dstnrt_tls_host.dll").touch()
             (root / "fixture.exe").write_bytes(build_image().replace(b"xmem.dll", b"demo.dll"))
             # The report depends on the real PE inspection. Echo the dry-run arguments
             # in place of a native loader so the test needs no runtime build.
             script = r"""
 $ErrorActionPreference = 'Stop'
-Set-Alias -Name (Join-Path $PWD 'runtime\build\gta6rt.exe') -Value Write-Output
+Set-Alias -Name (Join-Path $PWD 'runtime\build\dstnrt.exe') -Value Write-Output
 & .\scripts\first_look.ps1 -Exe (Join-Path $PWD 'fixture.exe')
 """
             env = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}

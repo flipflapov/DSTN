@@ -1,4 +1,4 @@
-# Run the stand-in game from its own folder by bare name, as a player would (`gta6rt --run game.exe`), and again
+# Run the stand-in game from its own folder by bare name, as a player would (`dstnrt --run game.exe`), and again
 # with `--game-dir .`. In both, GAME: has to name that folder as an absolute path: the guest moves its current
 # directory away and then reads GAME:\tiny_game_probe.txt (argument game-file). Before, a bare name left GAME: with
 # an empty root (`console paths: GAME: -> , writes -> overlay`) and the open failed with ERROR_PATH_NOT_FOUND.

@@ -1,7 +1,7 @@
-// Check that abort() from a mapped guest raises SIGABRT when the guest installed a handler, and keeps gta6rt's
+// Check that abort() from a mapped guest raises SIGABRT when the guest installed a handler, and keeps dstnrt's
 // recorded abort code (3) for the default, ignored and returning-handler cases. Each mode runs natively too: the
 // handler case must match, while the other three intentionally differ (current UCRT fail-fasts with 0xC0000409
-// after the raise, where gta6rt ends the run with its documented code). No game files.
+// after the raise, where dstnrt ends the run with its documented code). No game files.
 #include <windows.h>
 
 #include <cstdio>
@@ -44,7 +44,7 @@ bool run(const std::wstring& exe, const std::wstring& args, const char* what, DW
 
 int wmain(int argc, wchar_t** argv) {
     if (argc != 3) {
-        std::fprintf(stderr, "usage: tiny_game_abort_test <gta6rt.exe> <tiny_game.exe>\n");
+        std::fprintf(stderr, "usage: tiny_game_abort_test <dstnrt.exe> <tiny_game.exe>\n");
         return 1;
     }
     struct Case {
@@ -63,7 +63,7 @@ int wmain(int argc, wchar_t** argv) {
         const std::wstring mode(c.mode, c.mode + std::strlen(c.mode));
         const std::wstring guest = L"hello 42 " + mode;
         const std::string native = std::string("native ") + c.mode;
-        const std::string loaded = std::string("gta6rt ") + c.mode;
+        const std::string loaded = std::string("dstnrt ") + c.mode;
         run(argv[2], guest, native.c_str(), c.native_code);
         run(argv[1], L"--run \"" + std::wstring(argv[2]) + L"\" -- " + guest, loaded.c_str(), c.loader_code);
     }

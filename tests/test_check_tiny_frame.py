@@ -41,7 +41,7 @@ class CheckOutputTest(unittest.TestCase):
 
     def test_missing_loader_exit_line(self):
         output = good_output().replace("game exited with code 0", "game exited with code 1")
-        self.assertIn("gta6rt did not report `game exited with code 0`", check.check_output(0, output))
+        self.assertIn("dstnrt did not report `game exited with code 0`", check.check_output(0, output))
 
     def test_host_binding_is_reported(self):
         problems = check.check_output(0, good_output(binding="host"))

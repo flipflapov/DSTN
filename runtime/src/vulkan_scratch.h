@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace leonida {
+namespace dstn {
 
 class ScratchBuffers {
 public:
@@ -126,21 +126,21 @@ private:
     };
 
     struct Functions {
-#define LEONIDA_SCRATCH_FUNCTIONS(X)                                                                           \
+#define DSTN_SCRATCH_FUNCTIONS(X)                                                                           \
     X(vkCreateBuffer) X(vkDestroyBuffer) X(vkGetBufferMemoryRequirements) X(vkBindBufferMemory) X(vkFreeMemory) \
     X(vkGetSemaphoreCounterValue) X(vkDeviceWaitIdle)
-#define LEONIDA_SCRATCH_MEMBER(name) PFN_##name name = nullptr;
-        LEONIDA_SCRATCH_FUNCTIONS(LEONIDA_SCRATCH_MEMBER)
-#undef LEONIDA_SCRATCH_MEMBER
+#define DSTN_SCRATCH_MEMBER(name) PFN_##name name = nullptr;
+        DSTN_SCRATCH_FUNCTIONS(DSTN_SCRATCH_MEMBER)
+#undef DSTN_SCRATCH_MEMBER
 
         bool load(PFN_vkGetDeviceProcAddr get, VkDevice device) {
             bool all = true;
-#define LEONIDA_SCRATCH_LOAD(name)                              \
+#define DSTN_SCRATCH_LOAD(name)                              \
     name = reinterpret_cast<PFN_##name>(get(device, #name));    \
     all = all && name != nullptr;
-            LEONIDA_SCRATCH_FUNCTIONS(LEONIDA_SCRATCH_LOAD)
-#undef LEONIDA_SCRATCH_LOAD
-#undef LEONIDA_SCRATCH_FUNCTIONS
+            DSTN_SCRATCH_FUNCTIONS(DSTN_SCRATCH_LOAD)
+#undef DSTN_SCRATCH_LOAD
+#undef DSTN_SCRATCH_FUNCTIONS
             return all;
         }
     };
@@ -179,4 +179,4 @@ private:
     std::vector<Chunk> spare_;    // finished chunks kept for reuse
 };
 
-}  // namespace leonida
+}  // namespace dstn

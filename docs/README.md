@@ -59,7 +59,7 @@ method, scope and caveats. No game data is included.
 | Document | Measured content |
 |---|---|
 | [d3d12_vulkan.md](d3d12_vulkan.md) | Xbox D3D12 to Vulkan plan and status; device proxy, queues, command lists, barriers, copies. |
-| [boot.md](boot.md) | The first real boot: the `gta6rt --trace`/`--trace-d3d12` runbook, the startup + D3D12 trace summary (`tools/boot_trace.py`), the triage order and the Q1–Q22 checklist. |
+| [boot.md](boot.md) | The first real boot: the `dstnrt --trace`/`--trace-d3d12` runbook, the startup + D3D12 trace summary (`tools/boot_trace.py`), the triage order and the Q1–Q22 checklist. |
 | [descriptor_lookup_apple.md](descriptor_lookup_apple.md) | M3 Max GPU timings for texture and sampler descriptor lookups at 1k, 10k and 100k live entries. |
 | [descriptor_lookup_ada.md](descriptor_lookup_ada.md) | RTX 4070 SUPER (Ada, Windows) timings for the same lookups in VRAM, host-visible and ReBAR memory. |
 | [descriptor_lookup_intel.md](descriptor_lookup_intel.md) | Intel UHD Graphics 770 (Xe-LP, Windows, driver 101.6129) timings for the same lookups at 1k–100k live entries; both memory placements within 0.6% of each other. |
@@ -68,7 +68,7 @@ method, scope and caveats. No game data is included.
 | [d3d12_command_objects.md](d3d12_command_objects.md) | Measured command queue/list/fence/`PresentX` surface; verified vs prior art vs open. |
 | [xbox_d3d12_xs.md](xbox_d3d12_xs.md) | The `d3d12_xs` graphics ABI quoted from Microsoft's public GDK reference: root signatures, state objects, DXIL libraries, hit groups, shader cache sessions; which pages are missing or NDA-gated. |
 | [runtime_imports.md](runtime_imports.md) | The 16 shipped modules' measured imports and shim/host/unimplemented split. |
-| [xcl_compare.md](xcl_compare.md) | XCL's synthetic test title under `gta6rt --run` and under XCL (`tools/xcl_compare.py`): 5 of 50 checks pass here, both hangs are the documented manual-queue terminate deadlock, and each other difference mapped to an open item or a lead. |
+| [xcl_compare.md](xcl_compare.md) | XCL's synthetic test title under `dstnrt --run` and under XCL (`tools/xcl_compare.py`): 5 of 50 checks pass here, both hangs are the documented manual-queue terminate deadlock, and each other difference mapped to an open item or a lead. |
 | [gameinput.md](gameinput.md) | The GameInput shim on SDL3: `GameInputCreate` and the v0 `IGameInput`/`IGameInputDevice`/`IGameInputReading`/`IGameInputDispatcher` surface on any SDL gamepad, DualSense adaptive-trigger approximation and lightbar, force-feedback motors and trigger haptics through SDL's haptic API; 261 checks on virtual joysticks and a fake haptic backend; by hand on an Xbox Series X pad (Bluetooth) and a DualSense (USB). 261 checks on virtual joysticks and a fake haptic backend, not yet tried on a real pad. |
 | [saves.md](saves.md) | Save containers: `JSAV` (index + JSON story save, byte-exact rebuild), `ASAV` header, `SLAYER1` packed copy (not decoded); `tools/saves.py` and import into the offline `XGameSave` folder; key hashes are case-sensitive joaat (`tools/save_keys.py`). |
 | [pipeline_check.md](pipeline_check.md) | Driver-level corpus check: the full corpus, 26,503 of 26,503 modules and pipelines, 0 failures (RTX 4060 Ti); an earlier 10/12-shard run, 22,092 modules and 2,217 compute pipelines, also had 0 failures. Driver-level corpus check: 10/12 shards, 22,092 modules, 2,217 compute pipelines, 0 failures. |

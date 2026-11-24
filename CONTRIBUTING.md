@@ -40,12 +40,12 @@ methods are still open.
   to import or run nothing.
 - Runtime tests: `cmake -S runtime -B runtime/build`, `cmake --build runtime/build --config RelWithDebInfo`, then
   `ctest --test-dir runtime/build -C RelWithDebInfo --output-on-failure`. The CPU tests that need no game data are configured
-  on Windows; Linux and macOS configure the portable subset (`gta6rt` and the shims are Windows-only). Tests that need the retail package read `LEONIDA_GAME_DIR` (and `LEONIDA_MOVIE` for the Bink
+  on Windows; Linux and macOS configure the portable subset (`dstnrt` and the shims are Windows-only). Tests that need the retail package read `DSTN_GAME_DIR` (and `DSTN_MOVIE` for the Bink
   decode test) in place and print `SKIP` when the variable is unset; never copy or commit those files.
 - Viewer streaming tests: `node --test tests/test_viewer_streaming.cjs` (Node.js 22+, CI tests 24 LTS; no packages,
   browser, network or game data). These execute the viewer streaming code with a synthetic loader and clock.
-- `loader_test` writes small PE images to a `leonida_loader_test` folder in `%TEMP%`. Antivirus that blocks newly
-  written executables makes it stop with that reason; exclude the folder or set `LEONIDA_TEST_DIR` to one it skips.
+- `loader_test` writes small PE images to a `dstn_loader_test` folder in `%TEMP%`. Antivirus that blocks newly
+  written executables makes it stop with that reason; exclude the folder or set `DSTN_TEST_DIR` to one it skips.
 - Tool checks: `python -m compileall -q make_game.py tools tests`. The optional
   `vk_pipeline_check <spirv dir> [cache.bin] [--jobs N]` creates a module (and, for compute shaders, a
   pipeline) for every translated shader and reports failures plus the saved cache path.

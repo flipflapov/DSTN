@@ -1,7 +1,7 @@
 @echo off
-title Leonida - Game Builder
+title DSTN - Game Builder
 rem Double-click to build. Finds your copy of the game, checks what's installed, and builds into
-rem Documents\Leonida. Extra options pass through, e.g.  Build.bat --out D:\Games\Leonida
+rem Documents\DSTN. Extra options pass through, e.g.  Build.bat --out D:\Games\DSTN
 setlocal
 cd /d "%~dp0"
 echo.

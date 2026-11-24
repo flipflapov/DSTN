@@ -1,4 +1,4 @@
-# Leonida — Guia rápido (`pt-BR`)
+# DSTN — Guia rápido (`pt-BR`)
 
 > [!NOTE]
 > A documentação em inglês ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) e
@@ -6,9 +6,9 @@
 > configuração e compilação (sincronizado com o commit `f847748c`). Para o status diário do projeto, consulte o
 > [`README.md`](../../../README.md).
 
-## O que é o Leonida
+## O que é o DSTN
 
-O Leonida é um projeto de recompilação estática do Grand Theft Auto VI (Xbox Series) para rodar nativamente no
+O DSTN é um projeto de recompilação estática do Grand Theft Auto VI (Xbox Series) para rodar nativamente no
 Windows, construído **no seu próprio PC a partir da sua própria cópia**. Os shaders RDNA2 do console são
 traduzidos para SPIR-V (Vulkan), os assets são lidos diretamente do seu pacote e o software de sistema do
 console é reimplementado em shims.
@@ -54,7 +54,7 @@ O projeto está em fase inicial: **o jogo ainda não dá boot**.
 `--stages check,shaders,runtime` precisa de cerca de **30 GB**; o estágio `assets` (~370 GB) serve apenas para as
 ferramentas de extração de assets, e `--wav` adiciona várias vezes o tamanho dos arquivos Ogg Opus. `--work` e `--out`
 podem apontar para outro disco; se o pacote do jogo estiver em uma unidade somente leitura, use `--overlay` (no
-`gta6rt`) em um disco gravável. Mantenha os arquivos `.s` em `work/shaders/dxbc/disasm`: apagá-los mantendo a pasta faz
+`dstnrt`) em um disco gravável. Mantenha os arquivos `.s` em `work/shaders/dxbc/disasm`: apagá-los mantendo a pasta faz
 o estágio parecer concluído com zero shaders, e um link simbólico em `disasm` é recusado.
 
 ## Como compilar
@@ -66,10 +66,10 @@ o estágio parecer concluído com zero shaders, e um link simbólico em `disasm`
    ```powershell
    git clone --recursive https://github.com/ItsNotRexed/Leonida
    ```
-3. Abra a pasta `Leonida` e dê duplo clique em **`Build.bat`**.
+3. Abra a pasta `DSTN` e dê duplo clique em **`Build.bat`**.
 
 O script procura automaticamente sua cópia (Downloads, Desktop, Documentos, Games, pasta de usuário e raiz dos
-discos até dois níveis), valida os pré-requisitos e o espaço livre e grava o resultado em `Documents\Leonida`.
+discos até dois níveis), valida os pré-requisitos e o espaço livre e grava o resultado em `Documents\DSTN`.
 Se o build for interrompido, basta rodar novamente para retomar de onde parou.
 
 **Espaço em disco baixo:** o valor de ~350 GB é para o build completo. Para *rodar* o port, `--stages check,shaders,runtime`
@@ -85,7 +85,7 @@ python -I make_game.py --find                          # lista as cópias encont
 python -I make_game.py --pick                          # escolhe a pasta do jogo em uma janela de diálogo
 python -I make_game.py --check                         # verifica os arquivos do jogo sem compilar
 python -I make_game.py --check --full-check            # também compara o SHA-256 de cada arquivo (lento)
-python -I make_game.py --game "D:\caminho\do\pacote" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\caminho\do\pacote" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # roda apenas os estágios escolhidos
 python -I make_game.py --game "D:\caminho\do\pacote" --wav  # também decodifica Ogg Opus para PCM WAV (grande)
 python -I make_game.py --wave64-emulate off            # auto (padrão), on ou off; veja abaixo
@@ -139,13 +139,13 @@ as ferramentas e conferir as versões do LLVM conhecidas por causar problemas. S
 o estágio `runtime` fica fora da execução padrão no Linux.
 
 Você também pode reutilizar um build Windows já extraído, como o artefato `runtime-windows` do workflow
-Runtime. Passe a pasta que contém `gta6rt.exe` e `gta6rt_tls_host.dll`:
+Runtime. Passe a pasta que contém `dstnrt.exe` e `dstnrt_tls_host.dll`:
 
 ```sh
 python3 -I make_game.py --runtime-build ~/Downloads/runtime-windows
 ```
 
-Nos dois casos, o script copia os arquivos do runtime para o diretório indicado por `--out` e gera `gta6rt.sh` nessa pasta.
+Nos dois casos, o script copia os arquivos do runtime para o diretório indicado por `--out` e gera `dstnrt.sh` nessa pasta.
 O script inicia o runtime com `wine` por padrão. Para usar o Proton, aponte `WINE` para o `files/bin/wine`
 da instalação. No Windows, `--runtime-build` também permite reutilizar um build existente.
 
@@ -154,7 +154,7 @@ da instalação. No Windows, `--runtime-build` também permite reutilizar um bui
 - **Baixou pelo botão "Download ZIP" do GitHub**: o ZIP não inclui o submódulo `third_party/rpf9-explorer`. Use `git clone --recursive` ou execute `git submodule update --init --recursive` dentro da pasta do repositório.
 - **`llvm-mc` recusa `gfx1013` / AMDGPU**: você provavelmente está com o instalador oficial do LLVM para Windows. Siga um dos passos de configuração do LLVM acima.
 - **Erro de `D3D12_ROOT_SIGNATURE_DESC2` ao compilar o runtime**: atualize o Windows SDK para `10.0.26100` ou mais recente pelo Visual Studio Installer ou `winget install Microsoft.WindowsSDK.10.0.26100`, apague a pasta de build e reconfigure.
-- **Falha por falta de espaço no drive `C:`**: passe `--work "D:\leonida-work"` para mover os arquivos
+- **Falha por falta de espaço no drive `C:`**: passe `--work "D:\dstn-work"` para mover os arquivos
   temporários ou siga o [build com pouco espaço em disco](#build-com-pouco-espaço-em-disco).
 
 ## Como contribuir e rodar os testes de GPU

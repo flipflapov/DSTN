@@ -177,16 +177,16 @@ class RunTestTest(unittest.TestCase):
     def test_ctest_environment_is_applied_only_to_its_child(self) -> None:
         exe = self.program("show_environment.py",
                            "import os\n"
-                           "for key in ('LEONIDA_HOST_ADAPTER', 'LEONIDA_WINE_TEST_INHERITED', "
-                           "'LEONIDA_WINE_TEST_VALUE', 'LEONIDA_WINE_TEST_EMPTY'):\n"
+                           "for key in ('DSTN_HOST_ADAPTER', 'DSTN_WINE_TEST_INHERITED', "
+                           "'DSTN_WINE_TEST_VALUE', 'DSTN_WINE_TEST_EMPTY'):\n"
                            "    print(repr(os.environ.get(key)))\n")
         command = self.command_for(exe)
-        env = {"LEONIDA_HOST_ADAPTER": "inherited", "LEONIDA_WINE_TEST_INHERITED": "keep"}
-        props = {"ENVIRONMENT": ["LEONIDA_HOST_ADAPTER=warp", "LEONIDA_WINE_TEST_VALUE=path=a;b",
-                                 "LEONIDA_WINE_TEST_EMPTY="]}
+        env = {"DSTN_HOST_ADAPTER": "inherited", "DSTN_WINE_TEST_INHERITED": "keep"}
+        props = {"ENVIRONMENT": ["DSTN_HOST_ADAPTER=warp", "DSTN_WINE_TEST_VALUE=path=a;b",
+                                 "DSTN_WINE_TEST_EMPTY="]}
         with mock.patch.dict(os.environ, env):
-            os.environ.pop("LEONIDA_WINE_TEST_VALUE", None)
-            os.environ.pop("LEONIDA_WINE_TEST_EMPTY", None)
+            os.environ.pop("DSTN_WINE_TEST_VALUE", None)
+            os.environ.pop("DSTN_WINE_TEST_EMPTY", None)
             status, detail = self.run_entry(ctest_entry("with_environment", command, props))
             self.assertEqual(status, "pass", detail)
             self.assertEqual(detail.splitlines()[1:], ["'warp'", "'keep'", "'path=a;b'", "''"])
@@ -204,12 +204,12 @@ class RunTestTest(unittest.TestCase):
         self.assertIn("invalid CTest ENVIRONMENT", detail)
 
     def test_ctest_output_expressions_determine_the_result(self):
-        usage = {"PASS_REGULAR_EXPRESSION": ["alternative", "usage: gta6rt"]}
+        usage = {"PASS_REGULAR_EXPRESSION": ["alternative", "usage: dstnrt"]}
         forbidden = {"FAIL_REGULAR_EXPRESSION": ["running ", r"module\(s\) mapped"]}
         for code, output, props, expected in (
-            (2, "usage: gta6rt", usage | forbidden, "pass"),
+            (2, "usage: dstnrt", usage | forbidden, "pass"),
             (0, "unexpected output", usage, "fail"),
-            (2, "usage: gta6rt\n1 module(s) mapped", usage | forbidden, "fail"),
+            (2, "usage: dstnrt\n1 module(s) mapped", usage | forbidden, "fail"),
             (0, "running tiny_game.exe", forbidden, "fail"),
             (2, "unexpected output", forbidden, "fail"),
             (77, "unexpected output", usage | {"SKIP_RETURN_CODE": 77}, "skip"),
@@ -221,11 +221,11 @@ class RunTestTest(unittest.TestCase):
                 self.assertEqual(status, expected, detail)
 
     def test_a_scalar_output_expression_is_matched_as_one_pattern(self):
-        required = {"PASS_REGULAR_EXPRESSION": "usage: gta6rt"}
+        required = {"PASS_REGULAR_EXPRESSION": "usage: dstnrt"}
         forbidden = {"FAIL_REGULAR_EXPRESSION": r"module\(s\) mapped"}
         for code, output, props, expected in (
             (3, "unexpected output", required, "fail"),
-            (2, "usage: gta6rt", required, "pass"),
+            (2, "usage: dstnrt", required, "pass"),
             (0, "unexpected output", forbidden, "pass"),
             (0, "1 module(s) mapped", forbidden, "fail"),
         ):
@@ -251,9 +251,9 @@ class RunTestTest(unittest.TestCase):
     def test_a_signal_termination_fails_even_with_success_overrides(self):
         # The mocked negative returncode keeps the test portable across Windows and POSIX.
         exe = self.exiting(0)
-        fake = mock.Mock(returncode=-11, stdout=b"usage: gta6rt")
-        for props in ({"WILL_FAIL": True}, {"PASS_REGULAR_EXPRESSION": ["usage: gta6rt"]},
-                      {"SKIP_REGULAR_EXPRESSION": ["usage: gta6rt"]}):
+        fake = mock.Mock(returncode=-11, stdout=b"usage: dstnrt")
+        for props in ({"WILL_FAIL": True}, {"PASS_REGULAR_EXPRESSION": ["usage: dstnrt"]},
+                      {"SKIP_REGULAR_EXPRESSION": ["usage: dstnrt"]}):
             with self.subTest(props=props), mock.patch.object(rwt, "run_test_process", return_value=fake):
                 entry = ctest_entry("segv", self.command_for(exe), props | {"SKIP_RETURN_CODE": 77})
                 status, detail = self.run_entry(entry)
@@ -384,8 +384,8 @@ class DriveMapTest(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_the_drive_leads_to_the_checkout_and_is_removed_afterwards(self):
-        with rwt.DriveMap("D:/a/Leonida/Leonida", str(self.root), str(self.prefix)) as drive:
-            seen = self.link / "a" / "Leonida" / "Leonida" / "runtime" / "build" / "generated" / "cs.spv"
+        with rwt.DriveMap("D:/a/DSTN/DSTN", str(self.root), str(self.prefix)) as drive:
+            seen = self.link / "a" / "DSTN" / "DSTN" / "runtime" / "build" / "generated" / "cs.spv"
             self.assertEqual(seen.read_text(encoding="utf-8"), "spirv")
             self.assertIn("drive d: maps", drive.note)
             scratch = drive.scratch
@@ -394,14 +394,14 @@ class DriveMapTest(unittest.TestCase):
         self.assertTrue((self.root / "runtime" / "build" / "generated" / "cs.spv").is_file())   # links only
 
     def test_backslashes_and_a_lower_case_drive_are_accepted(self):
-        with rwt.DriveMap("d:\\work\\leonida\\", str(self.root), str(self.prefix)):
-            self.assertTrue((self.link / "work" / "leonida" / "runtime" / "build").is_dir())
+        with rwt.DriveMap("d:\\work\\dstn\\", str(self.root), str(self.prefix)):
+            self.assertTrue((self.link / "work" / "dstn" / "runtime" / "build").is_dir())
 
     def test_a_drive_the_prefix_already_has_is_left_alone(self):
         other = self.prefix / "elsewhere"
         other.mkdir()
         os.symlink(other, self.link)
-        with rwt.DriveMap("D:/a/Leonida/Leonida", str(self.root), str(self.prefix)) as drive:
+        with rwt.DriveMap("D:/a/DSTN/DSTN", str(self.root), str(self.prefix)) as drive:
             self.assertIn("already set", drive.note)
         self.assertEqual(os.readlink(self.link), str(other))
 

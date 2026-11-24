@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace leonida {
+namespace dstn {
 
 // From statistics_sum.comp. Compile with glslangValidator -V --target-env vulkan1.0 -Os -g0,
 // then encode the little-endian SPIR-V as uint32_t words. No shader compiler is needed at runtime build time.
@@ -50,4 +50,4 @@ inline constexpr std::uint32_t statistics_sum_spirv[] = {
     0x0003003e, 0x0000001d, 0x0000005c, 0x000100fd, 0x00010038,
 };
 
-} // namespace leonida
+} // namespace dstn

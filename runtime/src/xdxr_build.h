@@ -26,7 +26,7 @@
 
 #include "xdxr_build_spv.h"
 
-namespace leonida {
+namespace dstn {
 
 struct XdxrLayout {
     static constexpr std::uint32_t header_size = 64;
@@ -351,24 +351,24 @@ private:
     }
 
     struct Functions {
-#define LEONIDA_XDXR_FUNCTIONS(X)                                                                              \
+#define DSTN_XDXR_FUNCTIONS(X)                                                                              \
     X(vkCreateShaderModule) X(vkDestroyShaderModule) X(vkCreatePipelineLayout) X(vkDestroyPipelineLayout)      \
     X(vkCreateComputePipelines) X(vkDestroyPipeline) X(vkCmdBindPipeline) X(vkCmdPushConstants)                \
     X(vkCmdDispatch) X(vkCmdPipelineBarrier)
-#define LEONIDA_XDXR_MEMBER(name) PFN_##name name = nullptr;
-        LEONIDA_XDXR_FUNCTIONS(LEONIDA_XDXR_MEMBER)
-#undef LEONIDA_XDXR_MEMBER
+#define DSTN_XDXR_MEMBER(name) PFN_##name name = nullptr;
+        DSTN_XDXR_FUNCTIONS(DSTN_XDXR_MEMBER)
+#undef DSTN_XDXR_MEMBER
     };
 
     bool load(PFN_vkGetDeviceProcAddr get) {
         if (!get || !device_) return false;
         bool all = true;
-#define LEONIDA_XDXR_LOAD(name)                                     \
+#define DSTN_XDXR_LOAD(name)                                     \
     vk_.name = reinterpret_cast<PFN_##name>(get(device_, #name));   \
     all = all && vk_.name != nullptr;
-        LEONIDA_XDXR_FUNCTIONS(LEONIDA_XDXR_LOAD)
-#undef LEONIDA_XDXR_LOAD
-#undef LEONIDA_XDXR_FUNCTIONS
+        DSTN_XDXR_FUNCTIONS(DSTN_XDXR_LOAD)
+#undef DSTN_XDXR_LOAD
+#undef DSTN_XDXR_FUNCTIONS
         return all;
     }
 
@@ -399,4 +399,4 @@ private:
     bool loaded_ = false;
 };
 
-}  // namespace leonida
+}  // namespace dstn

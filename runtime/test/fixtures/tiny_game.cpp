@@ -1,14 +1,14 @@
-// A stand-in game executable for `gta6rt --run`: what a real title does in its first second, run through the
+// A stand-in game executable for `dstnrt --run`: what a real title does in its first second, run through the
 // loader instead of the Windows one. Test code, not game content. Run as
-//   gta6rt --run tiny_game.exe -- hello 42 [tls] [eh] [stack] [game-file] [exit-code] [abort-mode]
+//   dstnrt --run tiny_game.exe -- hello 42 [tls] [eh] [stack] [game-file] [exit-code] [abort-mode]
 // It checks its arguments, a static initializer, the heap, a file round trip, a second thread, and the
 // xgameruntime.dll imports (answered by the shim registry: the stub DLL it links against would fail them), then
 // calls exit() with 0 (42 with `exit-code`) when everything held. Two checks are opt-in, by argument (CTest's
 // run_tiny_game_tls and run_tiny_game_eh): `tls`, thread_local on the game's own threads, which needs the loader's
-// per-thread TLS (gta6rt starts main on a separate thread); and `eh`, a C++ exception caught inside the image.
+// per-thread TLS (dstnrt starts main on a separate thread); and `eh`, a C++ exception caught inside the image.
 // A third, `game-file` (run_tiny_game_dir), reads GAME:\tiny_game_probe.txt after moving the current directory.
 // A fourth, `stack` (run_tiny_game_stack), checks that the entry thread and a thread created with dwStackSize 0
-// both have 8 MB of stack: a driver compiles shaders on the game's threads (BUILD-1457). Only under gta6rt: run
+// both have 8 MB of stack: a driver compiles shaders on the game's threads (BUILD-1457). Only under dstnrt: run
 // natively, the second thread gets this program's own 1 MB.
 // An `abort-*` mode installs a SIGABRT disposition and calls abort(); tiny_game_abort_test compares the exact exit
 // codes with a native run of the same image. No game files.
@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     std::printf("tiny_game: started, argc=%d\n", argc);
     check(argc >= 3 && std::strcmp(argv[1], "hello") == 0 && std::strcmp(argv[2], "42") == 0,
-          "argv is the game's command line (\"hello\" \"42\"), not gta6rt's");
+          "argv is the game's command line (\"hello\" \"42\"), not dstnrt's");
     check(std::strstr(GetCommandLineA(), "hello 42") != nullptr, "GetCommandLineA is the game's command line");
     check(g_static.value == 1234, "a static initializer ran before main");
 
@@ -86,16 +86,16 @@ int main(int argc, char** argv) {
 
     char tmp[MAX_PATH] = {};
     GetTempPathA(MAX_PATH, tmp);
-    std::string path = std::string(tmp) + "leonida_tiny_game_" + std::to_string(GetCurrentProcessId()) + ".txt";
+    std::string path = std::string(tmp) + "dstn_tiny_game_" + std::to_string(GetCurrentProcessId()) + ".txt";
     bool file_ok = false;
     if (FILE* f = std::fopen(path.c_str(), "wb")) {
-        std::fputs("leonida", f);
+        std::fputs("dstn", f);
         std::fclose(f);
         char back[16] = {};
         if (FILE* r = std::fopen(path.c_str(), "rb")) {
             std::fread(back, 1, 7, r);
             std::fclose(r);
-            file_ok = std::strcmp(back, "leonida") == 0;
+            file_ok = std::strcmp(back, "dstn") == 0;
         }
         std::remove(path.c_str());
     }
@@ -106,8 +106,8 @@ int main(int argc, char** argv) {
     worker.join();
     check(sum == 500500, "a second thread ran and joined");
 
-    check(XGameRuntimeInitialize() == S_OK, "XGameRuntimeInitialize is answered by the gta6rt shim (S_OK)");
-    check(XSystemGetDeviceType() == 7, "XSystemGetDeviceType is answered by the gta6rt shim (Series X)");
+    check(XGameRuntimeInitialize() == S_OK, "XGameRuntimeInitialize is answered by the dstnrt shim (S_OK)");
+    check(XSystemGetDeviceType() == 7, "XSystemGetDeviceType is answered by the dstnrt shim (Series X)");
     XGameRuntimeUninitialize();
 
     if (has_arg(argc, argv, "tls")) {
@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
         std::printf("tiny_game: SKIP C++ exception (argument eh)\n");
     }
     if (has_arg(argc, argv, "stack")) {
-        // Windows gives a thread created with no size the reserve in the process's PE header, which is gta6rt's,
+        // Windows gives a thread created with no size the reserve in the process's PE header, which is dstnrt's,
         // not this image's. The entry thread gets its size from run_entry.
         const size_t want = size_t{8} << 20;
         size_t entry = 0, created = 0;
@@ -149,7 +149,7 @@ int main(int argc, char** argv) {
 
     if (has_arg(argc, argv, "game-file")) {
         // The probe file sits in the game folder (check_game_dir.cmake writes it). Move the current directory away
-        // first, as a title may: GAME: must still name the game folder, whether gta6rt was given a bare image name
+        // first, as a title may: GAME: must still name the game folder, whether dstnrt was given a bare image name
         // or a relative --game-dir.
         SetCurrentDirectoryA(tmp);
         HANDLE file = CreateFileW(L"GAME:\\tiny_game_probe.txt", GENERIC_READ, FILE_SHARE_READ, nullptr,

@@ -5,8 +5,8 @@ what works, what changed since it last passed, and what blocks next. It runs loc
 into the repository.
 
 ```powershell
-python -I tools/progress_dashboard.py --out ..\leonida_progress --run-tests --github
-start ..\leonida_progress\progress.html
+python -I tools/progress_dashboard.py --out ..\dstn_progress --run-tests --github
+start ..\dstn_progress\progress.html
 ```
 
 `--out` must be outside the repository; the tool refuses a folder inside it, so its output can't be committed by accident.

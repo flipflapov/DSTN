@@ -1,4 +1,4 @@
-# Leonida — Schnellstart (`de`)
+# DSTN — Schnellstart (`de`)
 
 > [!NOTE]
 > Die englische Dokumentation ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) und
@@ -6,9 +6,9 @@
 > Einrichten und Bauen (abgeglichen mit Commit `aa2988cc`). Den aktuellen Projektstand findest du in der
 > [`README.md`](../../../README.md).
 
-## Was ist Leonida?
+## Was ist DSTN?
 
-Leonida ist ein Static-Recompilation-Projekt, das Grand Theft Auto VI (Xbox Series) nativ unter Windows ausführen
+DSTN ist ein Static-Recompilation-Projekt, das Grand Theft Auto VI (Xbox Series) nativ unter Windows ausführen
 soll. Der Port wird **auf deinem PC aus deiner eigenen Kopie des Spiels** gebaut. Die CPU der Xbox Series ist wie ein
 PC x86-64, daher wird der Code des Spiels geladen und direkt ausgeführt, und die Systemsoftware der Konsole wird als
 sogenannte Shims nachgebaut. Die vorkompilierten RDNA2-Shader der Konsole werden nach SPIR-V (Vulkan) übersetzt,
@@ -27,7 +27,7 @@ Das Projekt steht noch am Anfang: **Das Spiel startet noch nicht.**
 
 Auf keiner Plattform ist bisher etwas spielbar. Was heute wo läuft:
 
-- **Windows**: alles (`make_game.py`, die Tools und die Runtime `gta6rt` mit der D3D12 → Vulkan-Schicht und ihren
+- **Windows**: alles (`make_game.py`, die Tools und die Runtime `dstnrt` mit der D3D12 → Vulkan-Schicht und ihren
   Tests).
 - **Linux**: Der Übersetzer, die Asset-Tools und die Vulkan-GPU-Testtools bauen und laufen nativ (getestet mit RADV
   und NVIDIA). Die Runtime ist Windows-Code: Sie wird mit clang-cl und xwin cross-kompiliert, ihre Tests laufen unter
@@ -91,7 +91,7 @@ Der Build findet deine Kopie selbst: Er sucht in Downloads, Desktop, Dokumente (
 etwa in OneDrive), Games, deinem Benutzerordner und oben auf jedem Laufwerk, jeweils zwei Ordner tief. Die Version
 erkennt er an ein paar Dateigrößen, ohne große Dateien zu lesen. Findet er mehrere Kopien, fragt er, welche er nehmen
 soll, findet er keine, bittet er dich, den Ordner einzufügen. Vor dem Start prüft er, ob alles installiert ist und
-genug Platz frei ist, und listet alles Fehlende auf einmal auf. Das Ergebnis landet in `Documents\Leonida`. Ein
+genug Platz frei ist, und listet alles Fehlende auf einmal auf. Das Ergebnis landet in `Documents\DSTN`. Ein
 abgebrochener Build macht beim nächsten Start dort weiter, wo er aufgehört hat.
 
 ### Wenig Speicherplatz
@@ -100,7 +100,7 @@ Der Platzbedarf oben gilt für den vollständigen Build. Um den Port nur zu *sta
 `--stages check,shaders,runtime` etwa 30 GB; die Stufe `assets`, die fast den ganzen Rest belegt, ist nur für die
 Asset-Tools da, und `--wav` kommt mit einem Mehrfachen der Ogg-Opus-Größe hinzu. `--work` und `--out` können auf
 einem anderen Laufwerk liegen. Die Runtime liest das Paket an Ort und Stelle; liegt es auf einem schreibgeschützten
-Laufwerk, brauchst du `gta6rt --overlay <beschreibbarer Ordner>` (eine Option von `gta6rt`, nicht von
+Laufwerk, brauchst du `dstnrt --overlay <beschreibbarer Ordner>` (eine Option von `dstnrt`, nicht von
 `make_game.py`). Lösche die `.s`-Dateien in `work/shaders/dxbc/disasm` nicht: Ohne sie und ohne
 `work/shaders/spirv/index.json` kann die Stufe `shaders` mit null Shadern fertig aussehen.
 
@@ -111,7 +111,7 @@ python -I make_game.py --find                          # zeigt die auf diesem PC
 python -I make_game.py --pick                          # Spielordner in einem Ordnerdialog auswählen
 python -I make_game.py --check                         # prüft deine Kopie, baut nichts
 python -I make_game.py --check --full-check            # vergleicht zusätzlich die SHA-256 jeder Datei (langsam)
-python -I make_game.py --game "D:\pfad\zum\paket" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\pfad\zum\paket" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # nur bestimmte Stufen
 python -I make_game.py --game "D:\pfad\zum\paket" --wav   # dekodiert Opus zusätzlich zu PCM-WAV (groß)
 python -I make_game.py --wave64-emulate auto           # auto (Standard), on oder off
@@ -139,8 +139,8 @@ Die Stufen laufen in dieser Reihenfolge: `check` → `shaders` → `assets` → 
   ein Windows-Programm und läuft unter Wine oder Proton: Die Stufe `runtime` cross-kompiliert ihn mit clang-cl und
   lld-link (LLVM 19+, aber nicht 22.1.7 oder 22.1.8) gegen das Windows SDK, das
   [xwin](https://github.com/Jake-Shadle/xwin) bereitlegt; siehe [`docs/testing.md`](../../testing.md). Alternativ
-  gibst du mit `--runtime-build <ordner>` einen anderswo gemachten Windows-Build an (`gta6rt.exe` und
-  `gta6rt_tls_host.dll`). In beiden Fällen legt das Skript `gta6rt.sh` an, das das Programm mit `wine` startet (oder
+  gibst du mit `--runtime-build <ordner>` einen anderswo gemachten Windows-Build an (`dstnrt.exe` und
+  `dstnrt_tls_host.dll`). In beiden Fällen legt das Skript `dstnrt.sh` an, das das Programm mit `wine` startet (oder
   mit dem Wine aus der Variable `WINE`, etwa von Proton).
 
 Zu `--wave64-emulate`: `auto` schaltet die Emulation ein, wenn eine GPU keine 64 breiten Subgroups hat oder ihre
@@ -157,7 +157,7 @@ GPU der Runtime es kann, denn dieser Treiber kann bei emuliertem LDS-Code abstü
 - **Fehler `D3D12_ROOT_SIGNATURE_DESC2` beim Bauen der Runtime**: Aktualisiere das Windows SDK auf `10.0.26100` oder
   neuer (über den Visual Studio Installer oder `winget install Microsoft.WindowsSDK.10.0.26100`), lösche den
   Build-Ordner und konfiguriere neu.
-- **Kein Platz auf `C:`**: Mit `--work "D:\leonida-work"` legst du die Arbeitsdateien auf ein anderes Laufwerk.
+- **Kein Platz auf `C:`**: Mit `--work "D:\dstn-work"` legst du die Arbeitsdateien auf ein anderes Laufwerk.
 
 ## Mithelfen und GPU-Tests ausführen
 

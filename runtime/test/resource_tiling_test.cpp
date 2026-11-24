@@ -17,12 +17,12 @@
 
 namespace {
 
-using leonida::packed_tile;
-using leonida::ResourceTiling;
-using leonida::TiledKind;
-using leonida::TilingDesc;
+using dstn::packed_tile;
+using dstn::ResourceTiling;
+using dstn::TiledKind;
+using dstn::TilingDesc;
 
-bool same(const leonida::SubresourceTiling& s, std::uint32_t w, std::uint32_t h, std::uint32_t d, std::uint32_t start) {
+bool same(const dstn::SubresourceTiling& s, std::uint32_t w, std::uint32_t h, std::uint32_t d, std::uint32_t start) {
     return s.width == w && s.height == h && s.depth == d && s.start == start;
 }
 

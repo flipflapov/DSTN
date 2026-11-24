@@ -122,7 +122,7 @@ to it holds the same save. The wrapper's header is the only place the autosave's
 
 The runtime's offline `XGameSaveImpl` (`runtime/shims/xgameruntime_gamesave.cpp`,
 [runtime_imports.md](runtime_imports.md)) keeps `XGameSave` data in
-`LEONIDA_SAVE_DIR\local-user\<container>\<blob>`, defaulting to `%LOCALAPPDATA%\Leonida\saves`, with names
+`DSTN_SAVE_DIR\local-user\<container>\<blob>`, defaulting to `%LOCALAPPDATA%\DSTN\saves`, with names
 %-encoded. `python -I tools/saves.py import <save folder>... [--out DIR] [--map OLD=CONTAINER/BLOB]` writes payloads
 in that layout with the same encoding, plus `import-manifest.json` (source, size, SHA-256).
 

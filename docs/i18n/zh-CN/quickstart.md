@@ -1,13 +1,13 @@
-# Leonida — 快速上手（`zh-CN`）
+# DSTN — 快速上手（`zh-CN`）
 
 > [!NOTE]
 > 英文文档（[`README.md`](../../../README.md)、[`CONTRIBUTING.md`](../../../CONTRIBUTING.md) 和
 > [`docs/README.md`](../../README.md)）是**权威版本**。本文只汇总稳定的安装与构建说明（与 commit `aa2988cc` 同步）。
 > 项目每日进展请查看 [`README.md`](../../../README.md)。
 
-## Leonida 是什么
+## DSTN 是什么
 
-Leonida 是一个把 Xbox Series 版 Grand Theft Auto VI **静态重编译**到 Windows 的项目：在**你自己的电脑上、
+DSTN 是一个把 Xbox Series 版 Grand Theft Auto VI **静态重编译**到 Windows 的项目：在**你自己的电脑上、
 用你自己的游戏拷贝**构建。主机的 RDNA2 着色器翻译为 SPIR-V（Vulkan），资源直接从你的包读取，
 主机的系统软件用 shim 重新实现。
 
@@ -22,7 +22,7 @@ Leonida 是一个把 Xbox Series 版 Grand Theft Auto VI **静态重编译**到 
 
 目前在任何平台上都还不能游玩。各平台现在能运行的部分：
 
-- **Windows**：全部（`make_game.py`、各工具，以及带 D3D12 → Vulkan 层及其测试的 runtime `gta6rt`）。
+- **Windows**：全部（`make_game.py`、各工具，以及带 D3D12 → Vulkan 层及其测试的 runtime `dstnrt`）。
 - **Linux**：翻译器、资源工具和 Vulkan GPU 测试工具可原生构建并运行（在 RADV 和 NVIDIA 上测试过）。runtime 是
   Windows 代码：用 clang-cl 和 xwin 交叉编译，测试在 Wine 或 Proton 下运行。游戏将来也打算这样运行（#217）。
 - **macOS（Apple Silicon）**：Python 工具和 Vulkan 测试工具可在 MoltenVK（Homebrew）或 KosmicKrisp 上原生运行。
@@ -71,13 +71,13 @@ Leonida 是一个把 Xbox Series 版 Grand Theft Auto VI **静态重编译**到 
 脚本会自动查找你的拷贝（Downloads、Desktop、Documents（也包括 OneDrive 等 Windows 实际存放它的位置）、Games、
 用户目录以及每个盘的根目录往下两层），只根据几个文件的大小识别版本，不读取大文件。找到多份拷贝时会问你用哪一份，
 一份都没找到时会让你粘贴目录路径。开始前它会检查前置条件和可用空间，并一次列出所有缺少的项目，结果写到
-`Documents\Leonida`。构建中断后重新运行即可从断点继续。
+`Documents\DSTN`。构建中断后重新运行即可从断点继续。
 
 ### 磁盘空间不足
 
 上面的空间要求针对完整构建。只想*运行*移植版时，`--stages check,shaders,runtime` 约需 30 GB；占了其余绝大部分
 空间的 `assets` 阶段只供资源工具使用，`--wav` 还会再增加数倍于 Ogg Opus 的大小。`--work` 和 `--out` 都可以放在
-其他盘。runtime 原地映射游戏包，所以包所在盘为只读时需要 `gta6rt --overlay <可写目录>`（这是 `gta6rt` 的选项，
+其他盘。runtime 原地映射游戏包，所以包所在盘为只读时需要 `dstnrt --overlay <可写目录>`（这是 `dstnrt` 的选项，
 不是 `make_game.py` 的）。不要删除 `work/shaders/dxbc/disasm` 里的 `.s` 文件：连同
 `work/shaders/spirv/index.json` 一起删掉后，`shaders` 阶段可能看起来已完成，却没有任何着色器。
 
@@ -88,7 +88,7 @@ python -I make_game.py --find                             # 列出本机找到�
 python -I make_game.py --pick                             # 在文件夹对话框里选择游戏目录
 python -I make_game.py --check                            # 校验游戏文件，不构建
 python -I make_game.py --check --full-check               # 另外比对每个文件的 SHA-256（较慢）
-python -I make_game.py --game "D:\path\to\package" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\path\to\package" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets            # 只跑指定阶段
 python -I make_game.py --game "D:\path\to\package" --wav  # 额外把 Ogg Opus 解码为 PCM WAV（很大）
 python -I make_game.py --wave64-emulate auto              # auto（默认）、on 或 off
@@ -128,7 +128,7 @@ commit 和 `tools/rpf9dump` 的源码）。其中任何一项改变时，只重�
   缺少这些时该阶段不参与默认 stages，显式请求会先列出缺什么。
   也可以使用别处构建好的 Windows 版本，例如 Runtime workflow 的 `runtime-windows` artifact：
   `python3 -I make_game.py --runtime-build ~/Downloads/runtime-windows`。
-  两种方式都会把 `gta6rt.exe` 和 `gta6rt_tls_host.dll` 复制到 `--out`，并在旁边生成 `gta6rt.sh`，
+  两种方式都会把 `dstnrt.exe` 和 `dstnrt_tls_host.dll` 复制到 `--out`，并在旁边生成 `dstnrt.sh`，
   用 `wine`（或 `WINE` 指定的 Proton）启动。`pipelines` 阶段使用 `vk_pipeline_check`（需要 CMake 3.24+、C++20
   编译器和 Vulkan 开发头文件，构建到 `runtime/build/linux`；缺少时脚本会在其他工作之前自行构建）。
 
@@ -141,7 +141,7 @@ commit 和 `tools/rpf9dump` 的源码）。其中任何一项改变时，只重�
 - **构建 runtime 时报 `D3D12_ROOT_SIGNATURE_DESC2` 错误**：把 Windows SDK 升级到 `10.0.26100` 或更新
   （可在 Visual Studio Installer 或 `winget install Microsoft.WindowsSDK.10.0.26100` 中安装），
   删除构建目录后重新配置。
-- **`C:` 盘空间不足**：用 `--work "D:\leonida-work"` 把中间文件放到其他分区。
+- **`C:` 盘空间不足**：用 `--work "D:\dstn-work"` 把中间文件放到其他分区。
 
 ## 参与贡献与运行 GPU 测试
 

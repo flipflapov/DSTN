@@ -24,11 +24,11 @@ void* volatile g_thread_event = nullptr;
 
 // Never called. The export keeps the TLS variable (and therefore the image's TLS directory) from being dropped by
 // the linker without making DllMain touch TLS during thread attach/detach.
-extern "C" __declspec(dllexport) void gta6rt_tls_host_keep() { g_tls_host_anchor = 1; }
+extern "C" __declspec(dllexport) void dstnrt_tls_host_keep() { g_tls_host_anchor = 1; }
 
 // Called by the loader. `fn` runs inside DllMain (under the Windows loader lock) for DLL_THREAD_ATTACH and
 // DLL_THREAD_DETACH; nullptr stops the calls.
-extern "C" __declspec(dllexport) void gta6rt_tls_host_set_thread_event(ThreadEventFn fn) {
+extern "C" __declspec(dllexport) void dstnrt_tls_host_set_thread_event(ThreadEventFn fn) {
     InterlockedExchangePointer(&g_thread_event, reinterpret_cast<void*>(fn));
 }
 

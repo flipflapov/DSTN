@@ -12,7 +12,7 @@
 //     faults on the vtable read in the guard region and is counted;
 //   - calls from eight threads at once, and repeated device, queue and fence creation without leaks;
 //   - the child-process runner of the differential check itself: large output, hangs, crashes, failed starts.
-// No shaders, game data or Xbox DLLs. LEONIDA_VK_VALIDATION=1 runs the Vulkan device under
+// No shaders, game data or Xbox DLLs. DSTN_VK_VALIDATION=1 runs the Vulkan device under
 // VK_LAYER_KHRONOS_validation (with synchronization validation); any validation error fails the test. Under Wine only
 // the Vulkan part runs. --trace-d3d12 also records every proxy call on the trace channel. Exits 77 when neither a
 // host D3D12 device nor a Vulkan device can be made.
@@ -269,7 +269,7 @@ int check_slots(const Backend& b) {
             if (wait_for(label, fence.p, 6)) return 1;
             if (b.vulkan) {
                 // The layer's own helpers find their queue behind the proxy.
-                EXPECT(rt::d3d12::last_execute_result(queue.p) == leonida::ReplayResult::success);
+                EXPECT(rt::d3d12::last_execute_result(queue.p) == dstn::ReplayResult::success);
                 (void)rt::d3d12::queue_uses_calibrated_timestamps(queue.p);
             }
         }
@@ -1056,12 +1056,12 @@ int check_child_runner() {
     return 0;
 }
 
-// How many differential children run at once: LEONIDA_QUEUE_PROXY_JOBS when set (1 = one after another, as before),
+// How many differential children run at once: DSTN_QUEUE_PROXY_JOBS when set (1 = one after another, as before),
 // else half the logical processors, from 1 to 8. Each child pays its own device start-up (about 5 s each on an AMD
 // RDNA2 iGPU, TEST-242), and that waiting is what running them side by side hides.
 unsigned differential_jobs() {
     char value[16] = {};
-    const DWORD length = GetEnvironmentVariableA("LEONIDA_QUEUE_PROXY_JOBS", value, sizeof(value));
+    const DWORD length = GetEnvironmentVariableA("DSTN_QUEUE_PROXY_JOBS", value, sizeof(value));
     if (length > 0 && length < sizeof(value)) {  // set, and short enough to be a number
         const unsigned long jobs = std::strtoul(value, nullptr, 10);
         if (jobs >= 1 && jobs <= 64) return static_cast<unsigned>(jobs);
@@ -1115,7 +1115,7 @@ int check_differential(const Backend& b) {
     constexpr int kCases = static_cast<int>(std::size(kDiffCases));
     std::vector<ChildResult> results(2 * kCases);  // [2 * case] real, [2 * case + 1] proxy
 
-    const bool force_isolate_all = GetEnvironmentVariableA("LEONIDA_QUEUE_PROXY_ISOLATE_ALL", nullptr, 0) > 0;
+    const bool force_isolate_all = GetEnvironmentVariableA("DSTN_QUEUE_PROXY_ISOLATE_ALL", nullptr, 0) > 0;
 
     std::vector<int> child_jobs;
     for (int i = 0; i < kCases; ++i) {
@@ -1716,7 +1716,7 @@ int main(int argc, char** argv) {
     if (argc == 3 && (std::strcmp(argv[1], "--child-flood") == 0 || std::strcmp(argv[1], "--child-hang") == 0 ||
                       std::strcmp(argv[1], "--child-crash") == 0))
         return run_runner_child(argv[1], std::strtoul(argv[2], nullptr, 10));
-    // --trace-d3d12, as gta6rt takes it: every proxy call is recorded on the trace channel as well.
+    // --trace-d3d12, as dstnrt takes it: every proxy call is recorded on the trace channel as well.
     if (argc == 2 && std::strcmp(argv[1], "--trace-d3d12") == 0) rt::d3d12_trace::set_enabled(true);
     else if (argc != 1) return 2;
     // The differential check depends on the child runner, which needs no device: checked first, on every machine.
@@ -1751,7 +1751,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    // The Vulkan-backed device, the way D3D12XboxCreateDevice hands it out with LEONIDA_D3D12=vulkan.
+    // The Vulkan-backed device, the way D3D12XboxCreateDevice hands it out with DSTN_D3D12=vulkan.
     vktest::Device d;
     if (d.create()) {
         const char* label = "Vulkan";

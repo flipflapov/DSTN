@@ -2,7 +2,7 @@
 #
 # Fails unless the PE header of TOOL reserves at least WANT bytes of stack (SizeOfStackReserve). On Windows that
 # reserve is the stack of the main thread and of every thread created without a size of its own, std::thread
-# included, so it is what a driver's compiler runs on in vk_pipeline_check, and in gta6rt on every game thread but
+# included, so it is what a driver's compiler runs on in vk_pipeline_check, and in dstnrt on every game thread but
 # the entry thread (BUILD-1457). Only the header is read.
 
 # A little-endian unsigned integer of `bytes` bytes at `offset` in `file`.

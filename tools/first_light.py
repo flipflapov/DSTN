@@ -588,7 +588,7 @@ def find_harness(explicit: str | None) -> str:
     build_dirs = (os.path.join(build, "linux"), os.path.join(build, "windows"), build)
     for candidate in (
         explicit,
-        os.environ.get("LEONIDA_VK_HARNESS"),
+        os.environ.get("DSTN_VK_HARNESS"),
         *(os.path.join(folder, executable) for folder in build_dirs),
     ):
         if candidate and os.path.isfile(candidate):
@@ -599,7 +599,7 @@ def find_harness(explicit: str | None) -> str:
             return os.path.join(configured, executable)
     raise SystemExit(
         "vk_harness not found: build runtime/build/linux or runtime/build/windows (target vk_harness), "
-        "or set --harness/LEONIDA_VK_HARNESS"
+        "or set --harness/DSTN_VK_HARNESS"
     )
 
 
@@ -900,8 +900,8 @@ def main(argv=None) -> int:
     ap.add_argument("--obj", help="an OBJ exported by rpf9dump models")
     ap.add_argument(
         "--work",
-        default=os.path.expanduser("~/leonida-work"),
-        help="the work folder make_game.py uses (default ~/leonida-work)",
+        default=os.path.expanduser("~/dstn-work"),
+        help="the work folder make_game.py uses (default ~/dstn-work)",
     )
     ap.add_argument("--out", help="output folder (default <work>/first_light/out)")
     ap.add_argument(
@@ -941,7 +941,7 @@ def main(argv=None) -> int:
     ap.add_argument("--fov", type=float, default=50.0, help="--camera: vertical field of view, degrees (default 50)")
     ap.add_argument(
         "--harness",
-        help="vk_harness binary (default LEONIDA_VK_HARNESS or runtime/build/linux)",
+        help="vk_harness binary (default DSTN_VK_HARNESS or runtime/build/linux)",
     )
     ap.add_argument(
         "--run", action="store_true", help="run the draw and write image.raw/image.ppm"

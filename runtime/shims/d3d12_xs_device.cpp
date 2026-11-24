@@ -18,7 +18,7 @@
 // frame. xs_proxy_mock_test's mock hit this in an optimized build, and its thunks now pass their words by pointer.
 #include "d3d12_xs_device.h"
 #include "d3d12_trace.h"
-#include "../src/shader_library.h"  // leonida::fspx_payload_from_parts for slot 67
+#include "../src/shader_library.h"  // dstn::fspx_payload_from_parts for slot 67
 
 #include <windows.h>
 #include <dxgi1_4.h>
@@ -556,11 +556,11 @@ HRESULT create_heap_proxy(ID3D12DescriptorHeap* real, DeviceProxy* device, REFII
 //
 // QueryInterface answers only the interfaces the proxy models (the base chain and its own interface, Fence1 when
 // the real fence has it), like the device and heap proxies, so the COM identity holds and no real object leaks to
-// the title. Leonida's own code reaches the real object through queue_proxy_real_queue / fence_proxy_real_fence /
+// the title. DSTN's own code reaches the real object through queue_proxy_real_queue / fence_proxy_real_fence /
 // allocator_proxy_real_allocator.
 //
 // Command allocators (device slot 9) are the third kind: their public chain is 9 slots (Reset at 8). Slot 9 wraps
-// only an allocator that answers kLeonidaCommandAllocatorTag, because a list takes the title's allocator in
+// only an allocator that answers kDstnCommandAllocatorTag, because a list takes the title's allocator in
 // CreateCommandList and Reset and only the Vulkan layer's lists resolve a proxy there (CommandAllocator::from);
 // a PC runtime allocator is handed out unchanged until a command-list proxy unwraps it at Reset.
 
@@ -1084,12 +1084,12 @@ HRESULT proxy_create_fence(DeviceProxy* self, std::uint64_t initial_value, std::
     return wrap_child<ChildKind::fence>(static_cast<IUnknown*>(created), self, riid, out);
 }
 
-// True when `allocator` is one whose consumers resolve allocator proxies: Leonida's own Vulkan-layer allocator,
+// True when `allocator` is one whose consumers resolve allocator proxies: DSTN's own Vulkan-layer allocator,
 // whose lists (CreateCommandList, Reset) find the real allocator through allocator_proxy_real_allocator. A PC
 // runtime allocator does not answer the tag, and its lists would take a proxy for their own allocator.
 bool resolves_allocator_proxies(IUnknown* allocator) {
     void* found = nullptr;
-    if (FAILED(allocator->QueryInterface(kLeonidaCommandAllocatorTag, &found)) || !found) return false;
+    if (FAILED(allocator->QueryInterface(kDstnCommandAllocatorTag, &found)) || !found) return false;
     static_cast<IUnknown*>(found)->Release();  // the implementation pointer starts with its IUnknown chain
     return true;
 }
@@ -1244,15 +1244,15 @@ HRESULT proxy_create_compute_pipeline_from_native_code(DeviceProxy* self, const 
     // With kind 0 (the DLL always passes it: its reader refuses a payload without one), the four pairs go on as one
     // FSPX payload, so the device matches the program by its kind-6 and kind-0 keys (docs/fspx.md, "Build and run-time
     // lookup"): two programs with the same code and different dispatch state stay apart. Every pair is checked before
-    // it is read (leonida::fspx_payload_from_parts); an inconsistent one refuses the call. Without kind 0 the kind-6
+    // it is read (dstn::fspx_payload_from_parts); an inconsistent one refuses the call. Without kind 0 the kind-6
     // bytes go on alone, as before.
     std::vector<std::uint8_t> payload;
     if (xbox_desc->kind0 || xbox_desc->kind0_size) {
-        const leonida::FspxPart parts[] = {{0, xbox_desc->kind0, xbox_desc->kind0_size},
+        const dstn::FspxPart parts[] = {{0, xbox_desc->kind0, xbox_desc->kind0_size},
                                            {1, xbox_desc->kind1, xbox_desc->kind1_size},
                                            {6, xbox_desc->kind6, xbox_desc->kind6_size},
                                            {7, xbox_desc->kind7, xbox_desc->kind7_size}};
-        payload = leonida::fspx_payload_from_parts(parts);
+        payload = dstn::fspx_payload_from_parts(parts);
         if (payload.empty()) {
             static std::atomic<bool> logged{false};
             if (!logged.exchange(true, std::memory_order_relaxed))

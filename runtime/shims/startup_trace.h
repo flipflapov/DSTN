@@ -1,4 +1,4 @@
-// Opt-in startup trace: gta6rt --trace FILE.
+// Opt-in startup trace: dstnrt --trace FILE.
 //
 // One JSON object per line, flushed per event so the file survives a crash. Off by default; every entry point is a
 // single relaxed load when it is off. Events:

@@ -1,4 +1,4 @@
-# Leonida — Guida rapida (`it`)
+# DSTN — Guida rapida (`it`)
 
 > [!NOTE]
 > La documentazione in inglese ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) e
@@ -6,9 +6,9 @@
 > stabili di configurazione e compilazione (sincronizzata con il commit `49475796`). Per lo stato quotidiano del
 > progetto consulta il [`README.md`](../../../README.md).
 
-## Che cos'è Leonida
+## Che cos'è DSTN
 
-Leonida è un progetto di ricompilazione statica di Grand Theft Auto VI (Xbox Series) per eseguirlo nativamente su
+DSTN è un progetto di ricompilazione statica di Grand Theft Auto VI (Xbox Series) per eseguirlo nativamente su
 Windows, **costruito sul tuo PC a partire dalla tua copia**. Il codice del gioco viene caricato ed eseguito
 nativamente (la CPU di Xbox Series è x86-64 come quella di un PC), il software di sistema della console è
 reimplementato in shim e i programmi GPU RDNA2 della console vengono tradotti in SPIR-V per Vulkan. Modelli,
@@ -77,7 +77,7 @@ esempio in OneDrive), Giochi, la cartella utente e la radice di ogni disco, fino
 Riconosce la versione da poche dimensioni di file, senza leggere nulla di grande. Se hai più copie ti chiede
 quale usare, e se non ne trova nessuna ti chiede di incollare il percorso della cartella. Prima di partire
 verifica che tutto il necessario sia installato e che ci sia abbastanza spazio libero, e ti elenca in un colpo
-solo ciò che manca. Il risultato va in `Documents\Leonida`. Se la build viene interrotta, riprende da dove si era
+solo ciò che manca. Il risultato va in `Documents\DSTN`. Se la build viene interrotta, riprende da dove si era
 fermata.
 
 ### Dal terminale (`make_game.py`)
@@ -89,7 +89,7 @@ python -I make_game.py --find                          # elenca le copie trovate
 python -I make_game.py --pick                          # scegli la cartella del gioco in una finestra
 python -I make_game.py --check                         # verifica la tua copia, senza compilare
 python -I make_game.py --check --full-check            # confronta anche lo SHA-256 di ogni file (lento)
-python -I make_game.py --game "D:\percorso\del\pacchetto" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\percorso\del\pacchetto" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # solo alcune fasi
 python -I make_game.py --game "D:\percorso\del\pacchetto" --wav   # decodifica anche Opus in PCM WAV (grande)
 python -I make_game.py --wave64-emulate off            # auto (predefinito), on oppure off
@@ -114,9 +114,9 @@ avvio non devono essere compilati. La traduzione degli shader è il passaggio pi
 - **`--work`**: conviene puntarlo a un disco con almeno 400 GB liberi.
 - **`--wav`**: disattivato di default perché il WAV PCM a 16 bit occupa molto più dell'Ogg Opus.
 - **Linux e Wine/Proton**: `make_game.py` funziona anche su Linux. Per la fase `runtime` fuori da Windows passa
-  `--runtime-build <cartella>` con una build Windows (`gta6rt.exe` e `gta6rt_tls_host.dll`, per esempio
-  l'artefatto `runtime-windows` della CI scompattato): lo script copia i file in `--out` e scrive `gta6rt.sh`,
-  che avvia `gta6rt.exe` con `wine` (o con il Wine indicato dalla variabile `WINE`; per Proton, il suo
+  `--runtime-build <cartella>` con una build Windows (`dstnrt.exe` e `dstnrt_tls_host.dll`, per esempio
+  l'artefatto `runtime-windows` della CI scompattato): lo script copia i file in `--out` e scrive `dstnrt.sh`,
+  che avvia `dstnrt.exe` con `wine` (o con il Wine indicato dalla variabile `WINE`; per Proton, il suo
   `files/bin/wine`). La stessa opzione salta la compilazione anche su Windows. In alternativa, su Linux la fase
   `runtime` può cross-compilare il loader con clang-cl e lld-link (LLVM 19+, esclusi 22.1.7 e 22.1.8) contro
   l'SDK di Windows preparato da [xwin](https://github.com/Jake-Shadle/xwin): vedi
@@ -132,7 +132,7 @@ avvio non devono essere compilati. La traduzione degli shader è il passaggio pi
 - **Errore su `D3D12_ROOT_SIGNATURE_DESC2` durante la build del runtime**: aggiorna il Windows SDK alla versione
   `10.0.26100` o successiva dal Visual Studio Installer oppure con
   `winget install Microsoft.WindowsSDK.10.0.26100`, elimina la cartella di build e riconfigura.
-- **Spazio esaurito sul disco `C:`**: passa `--work "D:\leonida-work"` per spostare i file temporanei su un'altra
+- **Spazio esaurito sul disco `C:`**: passa `--work "D:\dstn-work"` per spostare i file temporanei su un'altra
   partizione.
 
 ## Come contribuire ed eseguire i test GPU

@@ -1,4 +1,4 @@
-﻿﻿# Builds runtime\build\gta6rt.exe with MSVC at BelowNormal priority, on half the cores by default.
+﻿﻿# Builds runtime\build\dstnrt.exe with MSVC at BelowNormal priority, on half the cores by default.
 # Uses VS's CMake + Ninja when the "C++ CMake tools" component is installed (or native Windows cmake + ninja on PATH),
 # otherwise calls cl.exe directly.
 # The GameInput controller shim (SDL3, docs/gameinput.md) is built only on the CMake path: with an installed SDL3, or
@@ -56,9 +56,9 @@ $ninja = Find-BuildTool (Join-Path $cmakeDir "Ninja\ninja.exe") "ninja" {
     $null -ne (Invoke-ToolProbe $p @("--version"))
 }
 $cfg = if ($Debug) { "Debug" } else { "RelWithDebInfo" }
-$sdl = if ($FetchSdl3) { "-DLEONIDA_SDL3_FETCH=ON" } else { "" }
+$sdl = if ($FetchSdl3) { "-DDSTN_SDL3_FETCH=ON" } else { "" }
 # With VULKAN_SDK set, a configure that still finds no Vulkan headers fails instead of dropping the Vulkan D3D12 device.
-$vk = if ($env:VULKAN_SDK) { "-DLEONIDA_REQUIRE_VULKAN=ON" } else { "" }
+$vk = if ($env:VULKAN_SDK) { "-DDSTN_REQUIRE_VULKAN=ON" } else { "" }
 
 if ($cmake -and $ninja) {
     $body = @"
@@ -77,8 +77,8 @@ call "$cmake" --build "$out" -j $jobs || exit /b 1
     $body = @"
 cd /d "$out" || exit /b 1
 rem BUILD-1457: a game thread with the default stack size gets this program's reserve, and drivers compile on it. The same number as in CMakeLists.txt.
-cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /Zi $opt /MP$jobs /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DUNICODE /D_UNICODE $includes $($files -join ' ') $($xtaskqueueFiles -join ' ') /Fe:gta6rt.exe /link /OPT:NOREF /STACK:8388608 psapi.lib ole32.lib || exit /b 1
-cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /O2 /MT /DWIN32_LEAN_AND_MEAN /DNOMINMAX "$src\src\tls_host.cpp" /LD /Fe:gta6rt_tls_host.dll || exit /b 1
+cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /Zi $opt /MP$jobs /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DUNICODE /D_UNICODE $includes $($files -join ' ') $($xtaskqueueFiles -join ' ') /Fe:dstnrt.exe /link /OPT:NOREF /STACK:8388608 psapi.lib ole32.lib || exit /b 1
+cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /O2 /MT /DWIN32_LEAN_AND_MEAN /DNOMINMAX "$src\src\tls_host.cpp" /LD /Fe:dstnrt_tls_host.dll || exit /b 1
 cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /O2 /DWIN32_LEAN_AND_MEAN /DNOMINMAX /I "$src\shims" "$src\shims\d3d12_xs_rootsig.cpp" "$src\shims\registry.cpp" "$src\shims\d3d12_xs.cpp" "$src\shims\d3d12_xs_device.cpp" "$src\test\root_sig_test.cpp" /Fe:root_sig_test.exe /link d3d12.lib || exit /b 1
 cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /O2 /DWIN32_LEAN_AND_MEAN /DNOMINMAX /I "$src\shims" "$src\shims\d3d12_xs_rootsig.cpp" "$src\shims\registry.cpp" "$src\shims\d3d12_xs.cpp" "$src\shims\d3d12_xs_device.cpp" "$src\test\device_proxy_test.cpp" /Fe:device_proxy_test.exe /link d3d12.lib dxgi.lib || exit /b 1
 cl /nologo /std:c++20 /EHsc /W4 /permissive- /utf-8 /O2 /DWIN32_LEAN_AND_MEAN /DNOMINMAX /I "$src\src" "$src\test\descriptor_table_test.cpp" /Fe:descriptor_table_test.exe /link /OPT:NOREF || exit /b 1
@@ -112,4 +112,4 @@ $null = $p.Handle  # keeps the exit code readable after WaitForExit
 try { $p.PriorityClass = "BelowNormal" } catch {}
 $p.WaitForExit()
 if ($p.ExitCode -ne 0) { throw "build failed ($($p.ExitCode))" }
-Write-Host "built $out\gta6rt.exe"
+Write-Host "built $out\dstnrt.exe"

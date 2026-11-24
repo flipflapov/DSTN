@@ -1,4 +1,4 @@
-// The game's command line and exit, for `gta6rt --run` (shims/process.cpp).
+// The game's command line and exit, for `dstnrt --run` (shims/process.cpp).
 #pragma once
 #include <cstddef>
 #include <string>

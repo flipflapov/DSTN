@@ -449,7 +449,7 @@ class Outputs(unittest.TestCase):
             self.assertNotIn("/*__PROGRESS_LOGO__*/", page)
             if os.path.isfile(pd.LOGO):                              # the logo is embedded: the page needs no other file
                 self.assertIn('src="data:image/png;base64,', page)
-            self.assertIn('"schema": "leonida.progress/1"', page)
+            self.assertIn('"schema": "dstn.progress/1"', page)
             with open(os.path.join(out, "progress.html"), "rb") as f:
                 self.assertNotIn(b"\r\n", f.read())             # LF on every platform
             r2 = subprocess.run(cmd, capture_output=True, cwd=ROOT, timeout=300)

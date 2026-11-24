@@ -1,4 +1,4 @@
-# Быстрый старт Leonida (`ru`)
+# Быстрый старт DSTN (`ru`)
 
 > [!NOTE]
 > Главный источник: английская документация ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md)
@@ -6,9 +6,9 @@
 > (сверен с коммитом `aa2988cc`). Текущее состояние проекта меняется каждый день, его смотрите в
 > [`README.md`](../../../README.md).
 
-## Что такое Leonida
+## Что такое DSTN
 
-Leonida это проект статической рекомпиляции Grand Theft Auto VI (Xbox Series): игра запускается нативно на
+DSTN это проект статической рекомпиляции Grand Theft Auto VI (Xbox Series): игра запускается нативно на
 Windows. Процессор консоли x86-64, как у ПК, поэтому код игры загружается и работает напрямую, а системное ПО
 консоли реализовано заново. Готовые GPU-программы RDNA2 переводятся в SPIR-V для Vulkan. Модели, текстуры и звук
 читаются из вашего пакета. Всё это происходит **на вашем ПК, из вашей копии игры**.
@@ -25,7 +25,7 @@ Windows. Процессор консоли x86-64, как у ПК, поэтом�
 
 Ни на одной платформе пока ничего не играбельно. Что где работает сегодня:
 
-- **Windows**: всё (`make_game.py`, инструменты и runtime `gta6rt` со слоем D3D12 → Vulkan и его тестами).
+- **Windows**: всё (`make_game.py`, инструменты и runtime `dstnrt` со слоем D3D12 → Vulkan и его тестами).
 - **Linux**: переводчик, инструменты ресурсов и инструменты GPU-тестов Vulkan собираются и работают нативно
   (проверено на RADV и NVIDIA). Runtime это код для Windows: он кросс-собирается через clang-cl и xwin, а его тесты
   идут под Wine или Proton. Игра должна запускаться так же (#217).
@@ -86,7 +86,7 @@ Windows. Процессор консоли x86-64, как у ПК, поэтом�
 OneDrive), `Games`, домашнюю папку и корень каждого диска, на два уровня вглубь. Версию он определяет по
 размерам нескольких файлов, не читая больших данных. Если копий несколько, спросит, какую брать;
 если ни одной, попросит вставить путь к папке. Перед стартом он проверит, что всё из списка установлено и места
-хватает, и покажет все недостающие пункты разом. Результат пишется в `Documents\Leonida`. Прерванная
+хватает, и покажет все недостающие пункты разом. Результат пишется в `Documents\DSTN`. Прерванная
 сборка продолжается с того места, где встала.
 
 ### Мало места на диске
@@ -94,7 +94,7 @@ OneDrive), `Games`, домашнюю папку и корень каждого �
 Объём, указанный выше, нужен для полной сборки. Чтобы *запустить* порт, `--stages check,shaders,runtime` хватает
 примерно 30 ГБ; этап `assets`, на который приходится почти всё остальное, нужен только инструментам ресурсов, а
 `--wav` добавляет ещё в несколько раз больше, чем занимает Ogg Opus. `--work` и `--out` можно вынести на другой диск. Runtime читает пакет на месте, поэтому для
-диска только для чтения нужен `gta6rt --overlay <папка с правом записи>` (это флаг `gta6rt`, а не `make_game.py`).
+диска только для чтения нужен `dstnrt --overlay <папка с правом записи>` (это флаг `dstnrt`, а не `make_game.py`).
 Не удаляйте файлы `.s` в `work/shaders/dxbc/disasm`: без них и без `work/shaders/spirv/index.json` этап `shaders`
 может выглядеть завершённым с нулём шейдеров.
 
@@ -105,7 +105,7 @@ python -I make_game.py --find                          # какие копии �
 python -I make_game.py --pick                          # выбрать папку игры в диалоге
 python -I make_game.py --check                         # проверить копию, ничего не собирать
 python -I make_game.py --check --full-check            # ещё и сравнить SHA-256 каждого файла (долго)
-python -I make_game.py --game "D:\путь\к\пакету" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\путь\к\пакету" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # только часть этапов
 python -I make_game.py --game "D:\путь\к\пакету" --wav # ещё и Opus в PCM WAV (много места)
 python -I make_game.py --wave64-emulate off            # auto (по умолчанию), on или off
@@ -149,7 +149,7 @@ python -I make_game.py --wave64-emulate off            # auto (по умолча
 
 `make_game.py` работает и на Linux. Этап `pipelines` использует `vk_pipeline_check` (CMake 3.24+, компилятор
 C++20 и заголовки Vulkan; собирается в `runtime/build/linux`, а если его нет, скрипт соберёт его сам до остальной
-работы). Загрузчик (`gta6rt.exe`) это программа для Windows, поэтому на Linux она
+работы). Загрузчик (`dstnrt.exe`) это программа для Windows, поэтому на Linux она
 идёт под Wine или Proton. Этап `runtime` на Linux кросс-собирается в `runtime/build/windows` через `clang-cl` и
 `lld-link`
 (LLVM 19+, но не 22.1.7 и не 22.1.8, см. [`docs/testing.md`](../../testing.md#known-problems)) против CRT от MSVC и
@@ -163,8 +163,8 @@ Windows SDK, которые раскладывает [xwin](https://github.com/J
 python3 -I make_game.py --runtime-build ~/Downloads/runtime-windows
 ```
 
-В обоих случаях `gta6rt.exe` и `gta6rt_tls_host.dll` копируются в `--out`, а рядом пишется `gta6rt.sh`, который
-запускает `gta6rt.exe` через `wine` или через Wine из переменной `WINE` (для Proton это его `files/bin/wine`). На
+В обоих случаях `dstnrt.exe` и `dstnrt_tls_host.dll` копируются в `--out`, а рядом пишется `dstnrt.sh`, который
+запускает `dstnrt.exe` через `wine` или через Wine из переменной `WINE` (для Proton это его `files/bin/wine`). На
 Windows этот же флаг пропускает сборку.
 
 ## Частые проблемы
@@ -176,7 +176,7 @@ Windows этот же флаг пропускает сборку.
 - **CMake пишет «needs the Windows SDK 10.0.26100 or newer»** или MSVC не находит `Desc_1_2` в
   `D3D12_VERSIONED_ROOT_SIGNATURE_DESC`: поставьте Windows SDK `10.0.26100` или новее через Visual Studio
   Installer либо `winget install Microsoft.WindowsSDK.10.0.26100`, удалите `runtime/build` и настройте заново.
-- **Кончилось место на `C:`**: передайте `--work "D:\leonida-work"`, чтобы рабочие файлы легли на другой диск.
+- **Кончилось место на `C:`**: передайте `--work "D:\dstn-work"`, чтобы рабочие файлы легли на другой диск.
 - **Windows не даёт запустить только что собранные тестовые программы** («An Application Control policy has
   blocked this file»): так работает Smart App Control в Windows 11, подробности в
   [`docs/testing.md`](../../testing.md#known-problems).

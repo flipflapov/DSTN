@@ -230,7 +230,7 @@ void test_virtual_alloc(XMemVirtualAllocFn virtual_alloc, XMemGetWriteWatchFn ge
           "nonzero XMem allocation attributes are rejected before host allocation");
 }
 
-// gta6rt --trace: one "xmem_attributes" event per distinct raw attribute word and API, none with the trace off.
+// dstnrt --trace: one "xmem_attributes" event per distinct raw attribute word and API, none with the trace off.
 void test_attribute_trace(XMemAllocFn alloc, XMemFreeFn free_mem) {
     wchar_t temp[MAX_PATH];
     GetTempPathW(MAX_PATH, temp);
@@ -318,7 +318,7 @@ void test_transfer_memory(XMemTransferMemoryFn transfer) {
     check(wide(0xdead000000000000ull, 2 * kMiB) == TRUE, "XMemTransferMemory ignores the upper half of RCX");
 }
 
-// gta6rt --trace: one "xmem_transfer" event per distinct (type, size), none with the trace off.
+// dstnrt --trace: one "xmem_transfer" event per distinct (type, size), none with the trace off.
 void test_transfer_trace(XMemTransferMemoryFn transfer) {
     wchar_t temp[MAX_PATH];
     GetTempPathW(MAX_PATH, temp);

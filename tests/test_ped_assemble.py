@@ -413,7 +413,7 @@ class GlbExportAndCliTests(unittest.TestCase):
             self.assertEqual(stats["skins"], 1)
             self.assertEqual(stats["joints"], 2)
 
-            # Cross-validate the produced GLB with Leonida's strict glb_skinning validator!
+            # Cross-validate the produced GLB with DSTN's strict glb_skinning validator!
             proc = subprocess.run(
                 [sys.executable, "-I", os.path.join(TOOLS, "glb_skinning.py"), out_path],
                 capture_output=True,

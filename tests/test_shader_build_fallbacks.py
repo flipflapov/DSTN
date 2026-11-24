@@ -1,8 +1,8 @@
-"""runtime/test/shaders/build.py under the PerVertexKHR fallbacks (LEONIDA_BARY_FALLBACK=1, LEONIDA_F16_INTERP_FALLBACK=1).
+"""runtime/test/shaders/build.py under the PerVertexKHR fallbacks (DSTN_BARY_FALLBACK=1, DSTN_F16_INTERP_FALLBACK=1).
 
 The translator refuses a computed I/J pair (ps_ij_computed) without PerVertexKHR inputs, which both fallbacks take
 away. build.py used to treat that as a failed batch: it exited before publishing anything, so check.py then reported
-every test missing (0 of 147 on a Mac, where check.py needs LEONIDA_F16_INTERP_FALLBACK=1). check.py and
+every test missing (0 of 147 on a Mac, where check.py needs DSTN_F16_INTERP_FALLBACK=1). check.py and
 run_gpu_tests.py report ps_ij_computed as SKIP there; build.py now leaves it out and builds the rest.
 
 Standard library only; the translator is replaced by a stand-in that writes the index and modules and, like the real
@@ -24,7 +24,7 @@ from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = os.path.join(ROOT, "runtime", "test", "shaders", "build.py")
-FALLBACKS = ("LEONIDA_BARY_FALLBACK", "LEONIDA_F16_INTERP_FALLBACK")
+FALLBACKS = ("DSTN_BARY_FALLBACK", "DSTN_F16_INTERP_FALLBACK")
 
 
 def load_build():
@@ -92,7 +92,7 @@ class BuildUnderFallbackTest(unittest.TestCase):
 
     def test_the_whole_list_builds_under_a_fallback(self):
         # Before: "Translation did not produce validated SPIR-V for: ps_ij_computed", and an empty <out>/spirv.
-        status, printed = self.run_build([], {"LEONIDA_F16_INTERP_FALLBACK": "1"})
+        status, printed = self.run_build([], {"DSTN_F16_INTERP_FALLBACK": "1"})
         self.assertEqual(status, 0, printed)
         self.assertNotIn("ps_ij_computed", self.asked[0])
         published = {p.stem for p in (self.out / "spirv").glob("*.spv")}

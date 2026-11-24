@@ -6,7 +6,7 @@ arrives. Nothing here quotes game data; a real trace stays on the player's machi
 
 ## 1. What the first boot produces
 
-`gta6rt` has three passes over the executable (`runtime/README.md`, "Dry run" and "Current limits"):
+`dstnrt` has three passes over the executable (`runtime/README.md`, "Dry run" and "Current limits"):
 
 | Pass | What it does | What a clean result shows |
 |---|---|---|
@@ -31,12 +31,12 @@ summary leaves them as a count, so grep `^\[rt\]` for those.
 Windows (from the repository root):
 
 ```powershell
-$env:LEONIDA_D3D12 = 'vulkan'
+$env:DSTN_D3D12 = 'vulkan'
 $exe = "C:\path\to\game_scarlett_master.exe"
 $pkg = "C:\path\to\the\package"
 $trace = Join-Path $env:TEMP boot.jsonl
 $log = Join-Path $env:TEMP d3d12.log
-.\runtime\build\gta6rt.exe --run $exe --game-dir $pkg --trace $trace --trace-d3d12 2>&1 |
+.\runtime\build\dstnrt.exe --run $exe --game-dir $pkg --trace $trace --trace-d3d12 2>&1 |
     ForEach-Object { $_.ToString() } |
     Out-File -LiteralPath $log -Width 4096 -Encoding utf8
 python -I tools\boot_trace.py $trace --d3d12 $log
@@ -49,26 +49,26 @@ the `program.exe : ` prefix on the first stderr line.
 Linux under Wine (a cross build made with xwin, or the `runtime-windows` artifact; the backend must be Vulkan):
 
 ```sh
-export LEONIDA_D3D12=vulkan
-wine runtime/build/windows/gta6rt.exe --run /path/to/game_scarlett_master.exe \
+export DSTN_D3D12=vulkan
+wine runtime/build/windows/dstnrt.exe --run /path/to/game_scarlett_master.exe \
      --game-dir "Z:\\path\\to\\the\\package" \
      --trace "Z:\\tmp\\boot.jsonl" --trace-d3d12 2> /tmp/d3d12.log
 python3 -I tools/boot_trace.py /tmp/boot.jsonl --d3d12 /tmp/d3d12.log
 ```
 
 `--trace FILE` **refuses an existing file** (exit 2): it is created before the loader reads anything, so use a
-fresh name or delete the old one. `LEONIDA_D3D12=vulkan` selects the Vulkan-backed device, the only backend that
+fresh name or delete the old one. `DSTN_D3D12=vulkan` selects the Vulkan-backed device, the only backend that
 writes the `[d3d12-trace]` lines; without it the layer uses the Windows D3D12 device and the trace has nothing to
 read. Keep the traces out of the repository: they can quote whatever the game prints.
 
 Useful switches:
 
-* `LEONIDA_UNIMPLEMENTED=log` (default) logs every unimplemented import once and returns 0; `fail` returns
+* `DSTN_UNIMPLEMENTED=log` (default) logs every unimplemented import once and returns 0; `fail` returns
   `E_NOTIMPL` for the `HRESULT` imports; `stop` ends the process with exit code 3 on the first such call, after
   printing the caller's `module+RVA` and the argument registers (with a debugger attached it breaks instead). Start
   with `log`, then use `stop` to pin the first blocker and `fail` to see how the game's own failure path reacts.
   This switch covers imports only; it does not affect the D3D12 outcomes.
-* `LEONIDA_VK_VALIDATION=1` enables the Khronos validation layer with the Vulkan backend (startup overhead; it is a
+* `DSTN_VK_VALIDATION=1` enables the Khronos validation layer with the Vulkan backend (startup overhead; it is a
   diagnostic).
 * `DISABLE_RTSS_LAYER=1` and `DISABLE_VULKAN_OBS_CAPTURE=1` when MSI Afterburner or OBS is installed; their
   implicit layers add swapchain usage that shows up as validation errors ([testing.md](testing.md), "Known
@@ -82,7 +82,7 @@ Read the startup trace first; the first event that is not the expected one is th
 1. **`map`** — is the executable at its preferred base (`relocated: false`), and are the expected package DLLs
    mapped? A missing module is an import-table or search-path problem.
 2. **`unimplemented_call`** — the first `dll!name` and its `caller` (module+RVA). Add a shim, a host binding or a
-   deliberate failure in `runtime/shims/registry.cpp`; rerun with `LEONIDA_UNIMPLEMENTED=stop` to halt at the first
+   deliberate failure in `runtime/shims/registry.cpp`; rerun with `DSTN_UNIMPLEMENTED=stop` to halt at the first
    remaining blocker.
 3. **`tls_callback` / `dllmain`** — a failed DllMain, or a TLS callback that faults, usually points at the CRT or
    TLS index. The summary shows the address and phase of the last observed TLS callback
@@ -143,7 +143,7 @@ the de-duplicated 1–22. It maps each question to the event to look for; it doe
 * `map` lists the executable at its base, no `relocated`, and the package DLLs the imports need.
 * `dllmain` is all `1`; no `exception` before the entry point.
 * The D3D12 trace starts with the device, queue, allocator, list and fence, then the first resource/PSO/draw.
-* The first `unsupported` is a named method, not a crash; it is the next D3D12 call to fix. `LEONIDA_UNIMPLEMENTED`
+* The first `unsupported` is a named method, not a crash; it is the next D3D12 call to fix. `DSTN_UNIMPLEMENTED`
   does not affect these outcomes.
 * `exit` is the game's own code, not the loader's. A crash after the first frame is the next layer question.
 

@@ -1467,7 +1467,7 @@ def to_glb(
         "note": "Tube/ribbon radii are display sizes, not the game's runtime strand width.",
     }
     gltf: dict = {
-        "asset": {"version": "2.0", "generator": "Leonida smh_groom"},
+        "asset": {"version": "2.0", "generator": "DSTN smh_groom"},
         "scene": 0,
         "scenes": [{"nodes": [0]}],
         "nodes": [{"name": name, "mesh": 0}],

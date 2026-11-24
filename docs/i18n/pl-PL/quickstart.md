@@ -1,4 +1,4 @@
-# Leonida — Szybki start (`pl-PL`)
+# DSTN — Szybki start (`pl-PL`)
 
 > [!NOTE]
 > Dokumentacja w języku angielskim ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) i
@@ -6,9 +6,9 @@
 > konfiguracji i budowania (zsynchronizowany z commitem `f847748c`). Aktualny stan projektu znajdziesz w
 > [`README.md`](../../../README.md).
 
-## Czym jest Leonida
+## Czym jest DSTN
 
-Leonida to projekt statycznej rekompilacji Grand Theft Auto VI (Xbox Series), który uruchamia grę natywnie na
+DSTN to projekt statycznej rekompilacji Grand Theft Auto VI (Xbox Series), który uruchamia grę natywnie na
 Windowsie. Port jest budowany **na Twoim komputerze z Twojej własnej kopii gry**. Procesor Xbox Series jest x86-64
 tak jak w komputerze PC, więc kod gry jest ładowany i wykonywany natywnie, a oprogramowanie systemowe konsoli jest
 implementowane od nowa w postaci tzw. shimów. Skompilowane wcześniej programy GPU konsoli (RDNA2) są tłumaczone na
@@ -53,7 +53,7 @@ Projekt jest na wczesnym etapie: **gra jeszcze się nie uruchamia**.
 **Mało miejsca na dysku:** około 350 GB dotyczy pełnego builda. Do *uruchomienia* portu etapy
 `--stages check,shaders,runtime` potrzebują około 30 GB; etap `assets` (~300 GB) służy tylko narzędziom do zasobów,
 a `--wav` dodaje kilkakrotność rozmiaru Ogg Opus. `--work` i `--out` mogą leżeć na innym dysku; paczka na dysku
-tylko do odczytu wymaga `--overlay` (opcja `gta6rt`) na dysku zapisywalnym. Nie usuwaj plików `.s` z
+tylko do odczytu wymaga `--overlay` (opcja `dstnrt`) na dysku zapisywalnym. Nie usuwaj plików `.s` z
 `work/shaders/dxbc/disasm`: skasowanie ich z pozostawieniem folderu sprawia, że etap wygląda na ukończony z zerem
 shaderów, a `disasm` będący dowiązaniem symbolicznym jest odrzucany.
 
@@ -76,7 +76,7 @@ Skrypt sam znajdzie Twoją kopię gry: szuka w Pobranych, na Pulpicie, w Dokumen
 trzyma, np. w OneDrive), w Games, w folderze użytkownika i na początku każdego dysku, do dwóch poziomów w głąb.
 Rozpoznaje wersję po rozmiarach kilku plików, bez czytania dużych danych. Jeśli znajdzie kilka kopii, zapyta, której
 użyć, a jeśli żadnej — poprosi o wklejenie ścieżki do folderu. Przed startem sprawdza, czy wszystko jest zainstalowane
-i czy jest dość wolnego miejsca, i wymienia wszystkie braki naraz. Wynik zapisuje w `Documents\Leonida`. Przerwany
+i czy jest dość wolnego miejsca, i wymienia wszystkie braki naraz. Wynik zapisuje w `Documents\DSTN`. Przerwany
 build można uruchomić ponownie — będzie kontynuowany od miejsca, w którym się zatrzymał.
 
 ### Z terminala (`make_game.py`)
@@ -88,7 +88,7 @@ python -I make_game.py --find                          # lista kopii gry znalezi
 python -I make_game.py --pick                          # wybór folderu gry w oknie dialogowym
 python -I make_game.py --check                         # sprawdza Twoją kopię, niczego nie buduje
 python -I make_game.py --check --full-check            # dodatkowo porównuje SHA-256 każdego pliku (wolno)
-python -I make_game.py --game "D:\sciezka\do\paczki" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\sciezka\do\paczki" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # tylko wybrane etapy
 python -I make_game.py --game "D:\sciezka\do\paczki" --wav  # dodatkowo dekoduje Ogg Opus do PCM WAV (duże pliki)
 python -I make_game.py --wave64-emulate off            # auto (domyślnie), on lub off
@@ -125,8 +125,8 @@ procesora (można to zmienić przez `--jobs`).
   wznawianiu builda.
 - **Linux i Wine/Proton**: `make_game.py` działa też na Linuksie, a etap `pipelines` sam buduje tam
   `vk_pipeline_check`, jeśli go brakuje. Aby wykonać etap `runtime` poza Windowsem, podaj `--runtime-build <folder>`
-  z buildem dla Windowsa (`gta6rt.exe` i `gta6rt_tls_host.dll`, np. rozpakowany artefakt `runtime-windows` z CI).
-  Skrypt skopiuje te pliki do `--out` i utworzy `gta6rt.sh`, który uruchamia program przez `wine` (albo przez Wine
+  z buildem dla Windowsa (`dstnrt.exe` i `dstnrt_tls_host.dll`, np. rozpakowany artefakt `runtime-windows` z CI).
+  Skrypt skopiuje te pliki do `--out` i utworzy `dstnrt.sh`, który uruchamia program przez `wine` (albo przez Wine
   wskazane zmienną `WINE`, np. z Protona: `files/bin/wine`). Ta sama opcja pomija build na Windowsie. Alternatywnie
   etap `runtime` może na Linuksie cross-kompilować loader przez clang-cl i lld-link (LLVM 19+, ale nie 22.1.7 ani
   22.1.8) przeciw CRT MSVC i Windows SDK przygotowanym przez [xwin](https://github.com/Jake-Shadle/xwin) w
@@ -138,7 +138,7 @@ shadery. Zmiana któregokolwiek z nich, a także użycie starszego folderu roboc
 albo tłumaczenie z zachowaniem wyodrębnionych wejść shaderów.
 - **`--wave64-emulate`**: emuluje shadery compute/mesh wave64 na kartach z podgrupami 32-wątkowymi (NVIDIA i Intel). Domyślny tryb `auto` pyta `vulkaninfo` i sam włącza emulację, gdy jest potrzebna.
 - **`--work`**: najlepiej wskazać dysk z co najmniej 400 GB wolnego miejsca. Etap `shaders` trwa najdłużej i domyślnie używa połowy wątków procesora (można to zmienić przez `--jobs`).
-- **Linux i Wine/Proton**: `make_game.py` działa też na Linuksie. Aby wykonać etap `runtime` poza Windowsem, podaj `--runtime-build <folder>` z buildem dla Windowsa (`gta6rt.exe` i `gta6rt_tls_host.dll`). Skrypt utworzy wtedy `gta6rt.sh`, który uruchamia program przez `wine` (albo przez Wine wskazane zmienną `WINE`, np. z Protona).
+- **Linux i Wine/Proton**: `make_game.py` działa też na Linuksie. Aby wykonać etap `runtime` poza Windowsem, podaj `--runtime-build <folder>` z buildem dla Windowsa (`dstnrt.exe` i `dstnrt_tls_host.dll`). Skrypt utworzy wtedy `dstnrt.sh`, który uruchamia program przez `wine` (albo przez Wine wskazane zmienną `WINE`, np. z Protona).
 
 ## Częste problemy
 
@@ -150,7 +150,7 @@ albo tłumaczenie z zachowaniem wyodrębnionych wejść shaderów.
 - **Błąd `D3D12_ROOT_SIGNATURE_DESC2` przy budowaniu runtime**: zaktualizuj Windows SDK do `10.0.26100` lub nowszego
   przez Visual Studio Installer albo `winget install Microsoft.WindowsSDK.10.0.26100`, usuń folder builda i
   skonfiguruj go ponownie.
-- **Brak miejsca na dysku `C:`**: podaj `--work "D:\leonida-work"`, aby przenieść pliki robocze na inną partycję.
+- **Brak miejsca na dysku `C:`**: podaj `--work "D:\dstn-work"`, aby przenieść pliki robocze na inną partycję.
   Do samego uruchomienia wystarczą etapy `--stages check,shaders,runtime` (około 30 GB); `--out` też może leżeć na
   innym dysku.
 

@@ -1,4 +1,4 @@
-# Leonida クイックスタート（`ja`）
+# DSTN クイックスタート（`ja`）
 
 > [!NOTE]
 > 英語のドキュメント（[`README.md`](../../../README.md)、[`CONTRIBUTING.md`](../../../CONTRIBUTING.md)、
@@ -6,9 +6,9 @@
 > まとめたもので、commit `003e781` に同期しています。日々の進捗は [`README.md`](../../../README.md)
 > を参照してください。
 
-## Leonida とは
+## DSTN とは
 
-Leonida は、Xbox Series 版 Grand Theft Auto VI を Windows 上でネイティブに動かすための**静的リコンパイル**
+DSTN は、Xbox Series 版 Grand Theft Auto VI を Windows 上でネイティブに動かすための**静的リコンパイル**
 プロジェクトです。Xbox Series の CPU は PC と同じ x86-64 なので、ゲームのコードはそのまま読み込まれて
 ネイティブに実行され、本体側のシステムソフトウェアは shim として再実装されます。本体用にコンパイル済みの
 RDNA2 GPU プログラムは Vulkan 向けの SPIR-V に翻訳され、モデル・テクスチャ・音声はあなたのパッケージから
@@ -68,7 +68,7 @@ RDNA2 GPU プログラムは Vulkan 向けの SPIR-V に翻訳され、モデル
 Windows が保存する場所を含む）、Games、ホームフォルダー、各ドライブの先頭から 2 階層までを探し、いくつかの
 ファイルサイズからバージョンを判定します（大きなファイルは読みません）。複数ある場合はどれを使うか確認し、
 見つからない場合はフォルダーの貼り付けを求めます。開始前に上記の前提条件と空き容量を確認し、足りないものを
-まとめて表示します。出力先は `Documents\Leonida` です。中断したビルドは続きから再開します。
+まとめて表示します。出力先は `Documents\DSTN` です。中断したビルドは続きから再開します。
 
 ### コマンドライン（`make_game.py`）
 
@@ -77,7 +77,7 @@ python -I make_game.py --find                          # この PC で見つか�
 python -I make_game.py --pick                          # フォルダーダイアログでゲームフォルダーを選ぶ
 python -I make_game.py --check                         # コピーを確認するだけでビルドしない
 python -I make_game.py --check --full-check            # すべてのファイルの SHA-256 も比較（低速）
-python -I make_game.py --game "D:\path\to\your\package" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\path\to\your\package" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # 一部のステージだけ
 python -I make_game.py --game "D:\path\to\your\package" --wav   # Opus を PCM WAV にもデコード（大容量）
 python -I make_game.py --wave64-emulate off            # auto（既定）、on、off のいずれか
@@ -109,8 +109,8 @@ python -I make_game.py --wave64-emulate off            # auto（既定）、on�
   python3 -I make_game.py --runtime-build ~/Downloads/runtime-windows
   ```
 
-  どちらの場合も `gta6rt.exe` と `gta6rt_tls_host.dll` を `--out` にコピーし、隣に `gta6rt.sh` を書き出します。
-  これは `gta6rt.exe` を `wine`、または `WINE` で指定した Wine（Proton なら `files/bin/wine`）で起動します。
+  どちらの場合も `dstnrt.exe` と `dstnrt_tls_host.dll` を `--out` にコピーし、隣に `dstnrt.sh` を書き出します。
+  これは `dstnrt.exe` を `wine`、または `WINE` で指定した Wine（Proton なら `files/bin/wine`）で起動します。
   Windows で同じオプションを指定すると、ビルドは省略されます。
 
 ## よくある問題
@@ -125,7 +125,7 @@ python -I make_game.py --wave64-emulate off            # auto（既定）、on�
   `D3D12_VERSIONED_ROOT_SIGNATURE_DESC` のメンバーではないと報告する: Windows SDK を `10.0.26100` 以降に
   更新し（Visual Studio Installer、または `winget install Microsoft.WindowsSDK.10.0.26100`）、
   `runtime/build` を削除してから構成し直してください。
-- **`C:` ドライブの空きが足りない**: `--work "D:\leonida-work"` を指定して中間ファイルを別のドライブに置きます。
+- **`C:` ドライブの空きが足りない**: `--work "D:\dstn-work"` を指定して中間ファイルを別のドライブに置きます。
 - **Windows がビルド直後のテストプログラムの実行を拒否する**（"An Application Control policy has blocked this
   file"）: Windows 11 のスマート アプリ コントロールです。
   [docs/testing.md](../../testing.md#known-problems) を参照してください。

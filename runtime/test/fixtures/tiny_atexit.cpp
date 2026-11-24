@@ -1,4 +1,4 @@
-// A stand-in program for `gta6rt --run`: atexit handlers, static destructors and the ways a program ends.
+// A stand-in program for `dstnrt --run`: atexit handlers, static destructors and the ways a program ends.
 // Test code, not game content. check_atexit.cmake runs it natively and through the loader with each mode below
 // and compares the lines it prints.
 //   return        main returns: handlers and static destructors run, in reverse order of registration

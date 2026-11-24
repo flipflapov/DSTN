@@ -70,7 +70,7 @@ the **whole container** to the compute-PSO call: at `0x180021330` it loads `DAT_
 `XDXR GetBVHCompactedSize` PSO (0x14a4 bytes; measured below). `bvh_builder_test` measures **53** PSO
 creations during construction over the **52** containers ([d3d12_vulkan.md](d3d12_vulkan.md) A.2), so one
 container is created twice. It is **`GetBVHCompactedSize`** (5,284 bytes = 0x14a4): creations **#47 and #53** pass
-byte-identical containers (RT-182, `LEONIDA_BVH_RECORD62=1`, which now prints each creation's module from its `ILDN`
+byte-identical containers (RT-182, `DSTN_BVH_RECORD62=1`, which now prints each creation's module from its `ILDN`
 part and says when a container repeats). The test now also prints each creation's call site and the name the builder
 gives the returned PSO (RT-266, WARP, default constructor flag): the builder names every one of the 53 PSOs with
 `SetName`, `XDXR <module>` (for example `XDXR InitPartitionedHeaders`; some modules are shortened, as

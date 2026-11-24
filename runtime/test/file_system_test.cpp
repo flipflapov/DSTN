@@ -188,7 +188,7 @@ int main() {
     LARGE_INTEGER now{};
     QueryPerformanceCounter(&now);
     const std::filesystem::path root =
-        std::filesystem::temp_directory_path() / ("leonida_file_system_" + std::to_string(GetCurrentProcessId()) +
+        std::filesystem::temp_directory_path() / ("dstn_file_system_" + std::to_string(GetCurrentProcessId()) +
                                                   "_" + std::to_string(now.QuadPart));
     std::error_code ec;
     std::filesystem::remove_all(root, ec);
@@ -298,7 +298,7 @@ void run_checks(const std::filesystem::path& root) {
         check(contains(names, L"hello.txt") && count(names, L"hello.txt") == 1, "the merged listing has hello.txt once");
         check(contains(names, L"dup.txt"), "the merged listing has the package's own files");
         check(contains(names, L"sub"), "the merged listing has the package's folders");
-        check(!contains(names, L".gta6rt-deleted"), "the overlay's marker folder is not listed");
+        check(!contains(names, L".dstnrt-deleted"), "the overlay's marker folder is not listed");
 
         const std::vector<std::wstring> root_names = list(first_w, next_w, find_close, L"GAME:\\");
         check(contains(root_names, L"data") && contains(root_names, L"save"),
@@ -330,7 +330,7 @@ void run_checks(const std::filesystem::path& root) {
     {
         for (int i = 0; i < 300; ++i) write_path(package / "many" / ("f" + std::to_string(i) + ".bin"), "x");
         write_path(overlay / "many" / "F7.BIN", "overlay");
-        check(!std::filesystem::exists(overlay / ".gta6rt-deleted" / "many"), "GAME:\\many has no marker folder");
+        check(!std::filesystem::exists(overlay / ".dstnrt-deleted" / "many"), "GAME:\\many has no marker folder");
         const std::vector<std::wstring> names = list(first_w, next_w, find_close, L"GAME:\\many\\*");
         int files = 0;
         for (const auto& n : names)
@@ -384,7 +384,7 @@ void run_checks(const std::filesystem::path& root) {
         write_path(package / "acl" / "a.txt", "package");
         write_path(package / "acl" / "b.txt", "package");
         check(delete_w(L"GAME:\\acl\\a.txt") != FALSE, "DeleteFileW hides a.txt");
-        const std::wstring marks = (overlay / ".gta6rt-deleted" / "acl").wstring();
+        const std::wstring marks = (overlay / ".dstnrt-deleted" / "acl").wstring();
         FolderDeny deny(marks, FILE_LIST_DIRECTORY);
         const bool denied = deny.denied();
         WIN32_FIND_DATAW probe{};
@@ -458,7 +458,7 @@ void run_checks(const std::filesystem::path& root) {
         check(delete_w(L"GAME:\\nope\\missing.txt") == FALSE && GetLastError() == ERROR_FILE_NOT_FOUND,
               "deleting a file that never existed reports ERROR_FILE_NOT_FOUND");
 
-        // Deleting a nested package file creates parent directories inside .gta6rt-deleted/; those marker parent
+        // Deleting a nested package file creates parent directories inside .dstnrt-deleted/; those marker parent
         // directories must not hide the corresponding ancestor directories in the package.
         check(delete_w(L"GAME:\\data\\sub\\nested.txt") != FALSE, "DeleteFileW accepts a nested package file");
         const DWORD sub_attrs = attributes_w(L"GAME:\\data\\sub");
@@ -495,7 +495,7 @@ void run_checks(const std::filesystem::path& root) {
                 const std::filesystem::path relative = std::filesystem::path("delete-attributes") / leaf;
                 const auto package_file = package / relative, overlay_file = overlay / relative;
                 const auto native_file = root / "native-delete" / leaf;
-                const auto deletion_marker = overlay / ".gta6rt-deleted" / relative;
+                const auto deletion_marker = overlay / ".dstnrt-deleted" / relative;
                 const bool has_overlay = item.overlay_attributes != 0;
                 const DWORD visible_attributes = has_overlay ? item.overlay_attributes : item.package_attributes;
                 const char* visible_bytes = has_overlay ? "overlay bytes" : "package bytes";
@@ -565,7 +565,7 @@ void run_checks(const std::filesystem::path& root) {
     }
 
     // Deleting one package file must not hide its folder. The overlay has never written to GAME:\pkgonly, so the
-    // folder is only in the package, and its marker folder under .gta6rt-deleted is not a marker for the folder.
+    // folder is only in the package, and its marker folder under .dstnrt-deleted is not a marker for the folder.
     {
         write_path(package / "pkgonly" / "a.txt", "package");
         write_path(package / "pkgonly" / "b.txt", "package");
@@ -1025,11 +1025,11 @@ void run_checks(const std::filesystem::path& root) {
         check(all_opened, "two threads write-opening one package file both succeed");
         check(all_intact, "the overlay copy made under two threads holds the whole package file");
         std::error_code ec;
-        check(std::filesystem::is_empty(overlay / ".gta6rt-copy", ec) && !ec, "copy-up leaves no staging file behind");
+        check(std::filesystem::is_empty(overlay / ".dstnrt-copy", ec) && !ec, "copy-up leaves no staging file behind");
 
         // A leftover from a process killed mid-copy stays out of the title's view.
-        write_path(overlay / ".gta6rt-copy" / "123-1", "half");
-        check(!contains(list(first_w, next_w, find_close, L"GAME:\\*"), L".gta6rt-copy"),
+        write_path(overlay / ".dstnrt-copy" / "123-1", "half");
+        check(!contains(list(first_w, next_w, find_close, L"GAME:\\*"), L".dstnrt-copy"),
               "the copy staging folder is hidden from a GAME: listing");
     }
 
@@ -1071,25 +1071,25 @@ void run_checks(const std::filesystem::path& root) {
               "on a fresh overlay CreateDirectoryW(T:\\shadercache) succeeds");
         std::filesystem::path fresh = fresh_overlay();
         check(copy_w(L"GAME:\\data\\hello.txt", L"T:\\hello.tmp", FALSE) != FALSE &&
-                  read_path(fresh / ".gta6rt-temp" / "hello.tmp") == "package",
+                  read_path(fresh / ".dstnrt-temp" / "hello.tmp") == "package",
               "on a fresh overlay CopyFileW(GAME:\\data\\hello.txt, T:\\hello.tmp) succeeds");
         fresh = fresh_overlay();
         SetLastError(0);
         check(rmdir_w(L"T:\\") == FALSE && GetLastError() == ERROR_ACCESS_DENIED &&
-                  std::filesystem::is_directory(fresh / ".gta6rt-temp"),
+                  std::filesystem::is_directory(fresh / ".dstnrt-temp"),
               "T:\\ cannot be removed, like GAME:\\");
         fresh = fresh_overlay();
         SetLastError(0);
         check(move_w(L"T:\\", L"GAME:\\moved") == FALSE && GetLastError() == ERROR_ACCESS_DENIED &&
                   attributes_w(L"GAME:\\moved") == INVALID_FILE_ATTRIBUTES &&
-                  std::filesystem::is_directory(fresh / ".gta6rt-temp"),
+                  std::filesystem::is_directory(fresh / ".dstnrt-temp"),
               "T:\\ cannot be moved");
         fresh_overlay();
         attributes_w(L"T:\\");
         SetLastError(0);
-        const BOOL removed_by_game_path = rmdir_w(L"GAME:\\.gta6rt-temp");
+        const BOOL removed_by_game_path = rmdir_w(L"GAME:\\.dstnrt-temp");
         check(removed_by_game_path != FALSE || GetLastError() != ERROR_ACCESS_DENIED,
-              "only a T: path names the T:\\ root: GAME:\\.gta6rt-temp is not refused as a drive root");
+              "only a T: path names the T:\\ root: GAME:\\.dstnrt-temp is not refused as a drive root");
         rt::fs::configure(package, overlay);
 
         h = create_w(L"T:\\cache\\scratch.bin", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
@@ -1099,16 +1099,16 @@ void run_checks(const std::filesystem::path& root) {
             ::WriteFile(h, "scratch", 7, &written, nullptr);
             ::CloseHandle(h);
         }
-        check(read_path(overlay / ".gta6rt-temp" / "cache" / "scratch.bin") == "scratch",
+        check(read_path(overlay / ".dstnrt-temp" / "cache" / "scratch.bin") == "scratch",
               "a T: file lands in the overlay's scratch folder");
-        check(!std::filesystem::exists(package / "cache" / "scratch.bin") && !std::filesystem::exists(package / ".gta6rt-temp"),
+        check(!std::filesystem::exists(package / "cache" / "scratch.bin") && !std::filesystem::exists(package / ".dstnrt-temp"),
               "and the package is untouched");
         h = create_w(L"t:/cache/scratch.bin", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         check(h != INVALID_HANDLE_VALUE && read_handle(h) == "scratch", "the T: file reads back");
         if (h != INVALID_HANDLE_VALUE) ::CloseHandle(h);
         check(attributes_w(L"GAME:\\cache\\scratch.bin") == INVALID_FILE_ATTRIBUTES,
               "T: is its own drive: GAME: does not see the scratch file");
-        check(!contains(list(first_w, next_w, find_close, L"GAME:\\*"), L".gta6rt-temp"),
+        check(!contains(list(first_w, next_w, find_close, L"GAME:\\*"), L".dstnrt-temp"),
               "a listing of GAME:\\ does not show the scratch folder");
         SetLastError(0);
         check(create_w(L"T:\\..\\data\\hello.txt", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr) ==
@@ -1116,17 +1116,17 @@ void run_checks(const std::filesystem::path& root) {
                   GetLastError() == ERROR_INVALID_NAME,
               "T:\\.. cannot climb out of the scratch folder into the package");
 
-        // The overlay's own folders (.gta6rt-deleted, .gta6rt-temp, .gta6rt-copy) are hidden from GAME:\ listings and,
+        // The overlay's own folders (.dstnrt-deleted, .dstnrt-temp, .dstnrt-copy) are hidden from GAME:\ listings and,
         // as an explicit GAME: or G: path, refused like any other invalid name, in every spelling parse_console()
         // normalises (RT-294). T:\ still names the scratch folder, and an ordinary dotted name is not reserved.
-        write_path(overlay / ".gta6rt-temp" / "runtime.tmp", "runtime");
-        write_path(overlay / ".gta6rt-deleted" / "data" / "gone.txt", "");
-        write_path(overlay / ".gta6rt-other" / "ok.txt", "ok");
-        for (const wchar_t* reserved : {L"GAME:\\.gta6rt-temp\\runtime.tmp", L"GAME:\\.GTA6RT-TEMP\\runtime.tmp",
-                                        L"game:/.gta6rt-temp/runtime.tmp", L"GAME:\\.\\.gta6rt-temp\\runtime.tmp",
-                                        L"GAME:\\data\\..\\.gta6rt-temp\\runtime.tmp", L"G:\\.gta6rt-temp\\runtime.tmp",
-                                        L"GAME:\\.gta6rt-deleted\\data\\gone.txt", L"GAME:\\.gta6rt-copy\\x.bin",
-                                        L"GAME:\\.gta6rt-temp"}) {
+        write_path(overlay / ".dstnrt-temp" / "runtime.tmp", "runtime");
+        write_path(overlay / ".dstnrt-deleted" / "data" / "gone.txt", "");
+        write_path(overlay / ".dstnrt-other" / "ok.txt", "ok");
+        for (const wchar_t* reserved : {L"GAME:\\.dstnrt-temp\\runtime.tmp", L"GAME:\\.DSTNRT-TEMP\\runtime.tmp",
+                                        L"game:/.dstnrt-temp/runtime.tmp", L"GAME:\\.\\.dstnrt-temp\\runtime.tmp",
+                                        L"GAME:\\data\\..\\.dstnrt-temp\\runtime.tmp", L"G:\\.dstnrt-temp\\runtime.tmp",
+                                        L"GAME:\\.dstnrt-deleted\\data\\gone.txt", L"GAME:\\.dstnrt-copy\\x.bin",
+                                        L"GAME:\\.dstnrt-temp"}) {
             SetLastError(0);
             const HANDLE h = create_w(reserved, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
             check(h == INVALID_HANDLE_VALUE && GetLastError() == ERROR_INVALID_NAME,
@@ -1138,31 +1138,31 @@ void run_checks(const std::filesystem::path& root) {
         }
         WIN32_FIND_DATAW marker_data{};
         SetLastError(0);
-        const HANDLE markers = first_w(L"GAME:\\.gta6rt-deleted\\data\\*", &marker_data);
+        const HANDLE markers = first_w(L"GAME:\\.dstnrt-deleted\\data\\*", &marker_data);
         check(markers == INVALID_HANDLE_VALUE && GetLastError() == ERROR_INVALID_NAME,
-              "deletion markers cannot be listed through GAME:\\.gta6rt-deleted");
+              "deletion markers cannot be listed through GAME:\\.dstnrt-deleted");
         if (markers != INVALID_HANDLE_VALUE) find_close(markers);
         SetLastError(0);
-        const HANDLE probe = create_w(L"GAME:\\.gta6rt-temp\\probe.txt", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
-        check(probe == INVALID_HANDLE_VALUE && !std::filesystem::exists(overlay / ".gta6rt-temp" / "probe.txt"),
-              "a write through GAME:\\.gta6rt-temp creates nothing in the scratch folder");
+        const HANDLE probe = create_w(L"GAME:\\.dstnrt-temp\\probe.txt", GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
+        check(probe == INVALID_HANDLE_VALUE && !std::filesystem::exists(overlay / ".dstnrt-temp" / "probe.txt"),
+              "a write through GAME:\\.dstnrt-temp creates nothing in the scratch folder");
         if (probe != INVALID_HANDLE_VALUE) ::CloseHandle(probe);
-        check(mkdir_w(L"GAME:\\.gta6rt-copy\\sub", nullptr) == FALSE && !std::filesystem::exists(overlay / ".gta6rt-copy" / "sub"),
+        check(mkdir_w(L"GAME:\\.dstnrt-copy\\sub", nullptr) == FALSE && !std::filesystem::exists(overlay / ".dstnrt-copy" / "sub"),
               "CreateDirectoryW refuses a reserved folder");
-        check(delete_w(L"GAME:\\.gta6rt-deleted\\data\\gone.txt") == FALSE &&
-                  std::filesystem::exists(overlay / ".gta6rt-deleted" / "data" / "gone.txt"),
+        check(delete_w(L"GAME:\\.dstnrt-deleted\\data\\gone.txt") == FALSE &&
+                  std::filesystem::exists(overlay / ".dstnrt-deleted" / "data" / "gone.txt"),
               "DeleteFileW cannot remove a deletion marker through GAME:");
         HANDLE through = create_w(L"T:\\runtime.tmp", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         check(through != INVALID_HANDLE_VALUE && read_handle(through) == "runtime", "T:\\ still reaches the scratch folder");
         if (through != INVALID_HANDLE_VALUE) ::CloseHandle(through);
-        through = create_w(L"GAME:\\.gta6rt-other\\ok.txt", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+        through = create_w(L"GAME:\\.dstnrt-other\\ok.txt", GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
         check(through != INVALID_HANDLE_VALUE && read_handle(through) == "ok", "an ordinary dotted name under GAME: is not reserved");
         if (through != INVALID_HANDLE_VALUE) ::CloseHandle(through);
 
         // A package that itself sits on drive G: is reached by host paths, which must stay host paths.
-        rt::fs::configure(L"G:\\leonida_missing_package", L"G:\\leonida_missing_overlay");
+        rt::fs::configure(L"G:\\dstn_missing_package", L"G:\\dstn_missing_overlay");
         SetLastError(0);
-        check(attributes_w(L"G:\\leonida_missing_package\\data.txt") == INVALID_FILE_ATTRIBUTES &&
+        check(attributes_w(L"G:\\dstn_missing_package\\data.txt") == INVALID_FILE_ATTRIBUTES &&
                   GetLastError() != ERROR_INVALID_NAME,
               "a path under a configured G: game folder is a host path");
         // No roots configured: nothing to map G: and T: onto, so they are host paths.

@@ -45,7 +45,7 @@ from file_mode import published_mode  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE = os.path.join(ROOT, "tools", "progress_dashboard.html")
 LOGO = os.path.join(ROOT, "assets", "logo.png")
-SCHEMA = "leonida.progress/1"
+SCHEMA = "dstn.progress/1"
 STATUSES = ("verified", "implemented", "partial", "failed", "missing", "blocked", "unknown")
 PYTEST_MARKERS = re.compile(r"^import pytest|^ *HAVE_NUMPY =", re.M)   # the CI selection rule (ci.yml)
 DEFAULT_REPO = "ItsNotRexed/Leonida"

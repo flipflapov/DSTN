@@ -100,7 +100,7 @@ python -I tools/wave64_pipeline_audit.py <spirv>/index.json
 python -I tools/wave64_pipeline_audit.py <spirv>/index.json --manifest pairs.json --strict --report wave64-summary.json
 ```
 
-The audit checks the Vulkan device selected on this PC and respects `LEONIDA_VK_DEVICE`. To assess
+The audit checks the Vulkan device selected on this PC and respects `DSTN_VK_DEVICE`. To assess
 another device, save `python -I tools/vk_subgroup_info.py --stage-caps` as UTF-8 JSON on that system and pass the file
 with `--device-info`. The report counts each shader once and each pipeline by its worst stage. It
 contains aggregate counts, capability masks and reason categories. Shader and pipeline names are
@@ -126,7 +126,7 @@ measure shader compile time and reproduce compiler failures on a machine without
 Readback and dispatch correctness still require a Vulkan device that executes commands.
 See the [Mesa DRM shim guide](https://docs.mesa3d.org/ci/drm-shim.html).
 
-From the Leonida root, build the checker and translate a synthetic fixture. The fixture build needs
+From the DSTN root, build the checker and translate a synthetic fixture. The fixture build needs
 `spirv-as`, `spirv-val` and LLVM 21 or later with the AMDGPU target. Set `LLVM_MC` if the assembler
 has a versioned name.
 
@@ -177,7 +177,7 @@ VK_DRIVER_FILES="$intel_icd" MESA_SHADER_CACHE_DISABLE=true \
 
 The example selects a Battlemage profile. Use `dg2` for an Alchemist profile or `adl` for Alder Lake.
 On Mesa 26.1.6 all three compiled the example, including when it was rebuilt with
-`LEONIDA_PC_TAIL_UBO=1` to move the push-constant tail to a uniform buffer.
+`DSTN_PC_TAIL_UBO=1` to move the push-constant tail to a uniform buffer.
 
 ## Corpus
 
@@ -322,9 +322,9 @@ Not measured: other AMD GPU families, other vendors' Windows drivers, and a corp
 **The runtime.** The D3D12 shim creates a pipeline on the thread that asks for it
 (`runtime/shims/d3d12_vulkan_device.cpp`), so there the compiler runs on a game thread. The entry thread has 8 MB
 from `run_entry` (`runtime/shims/process_shim.h`). A thread the game starts with `dwStackSize` 0, a thread-pool
-thread and a `std::thread` of the shims get the reserve in `gta6rt.exe`'s header, because the game's `CreateThread`
-is Windows' own. `gta6rt` is therefore linked with the same 8 MB (`GTA6RT_STACK` in `runtime/CMakeLists.txt`, and
-the loader's `cl` line in `scripts/build_runtime.ps1`). The CTest `gta6rt_stack` reads the header, and
+thread and a `std::thread` of the shims get the reserve in `dstnrt.exe`'s header, because the game's `CreateThread`
+is Windows' own. `dstnrt` is therefore linked with the same 8 MB (`DSTNRT_STACK` in `runtime/CMakeLists.txt`, and
+the loader's `cl` line in `scripts/build_runtime.ps1`). The CTest `dstnrt_stack` reads the header, and
 `run_tiny_game_stack` asks Windows from inside a program the loader runs: the entry thread and a thread created
 with `dwStackSize` 0 both report 8 MB. Not covered: a thread the title creates with an explicit smaller size keeps
 that size. Which threads the game creates pipelines on is not known without its executable.

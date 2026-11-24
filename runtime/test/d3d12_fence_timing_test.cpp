@@ -3,7 +3,7 @@
 // paths (calibrated timestamps on the standalone device when it exposes both clock domains, the submitted timestamp
 // query otherwise), GetAdapterLuid (must name a DXGI adapter) and GetCustomHeapProperties (compared with the host PC
 // runtime's answer when the host adapter is NUMA, as the layer reports itself). No shaders or game data.
-// LEONIDA_VK_VALIDATION=1 runs the test-made device under VK_LAYER_KHRONOS_validation; any validation error fails
+// DSTN_VK_VALIDATION=1 runs the test-made device under VK_LAYER_KHRONOS_validation; any validation error fails
 // the test.
 #include "vk_test_device.h"
 #include "host_wine.h"

@@ -1,6 +1,6 @@
 # Comparing the runtime with XCL's test title
 
-`tools/xcl_compare.py` runs one synthetic console executable under `gta6rt --run` and under
+`tools/xcl_compare.py` runs one synthetic console executable under `dstnrt --run` and under
 [XCL](https://github.com/ivall/xcl), and lists where the two runtimes disagree. XCL already runs retail Xbox Series
 titles, so a check that passes there and fails here points at a loader, shim or D3D12 gap. It is a lead to
 investigate, not proof of a bug: some of the title's checks test XCL's own design choices.
@@ -32,10 +32,10 @@ python -I tools/xcl_compare.py --xcl C:\src\xcl
 python -I tools/xcl_compare.py --xcl C:\src\xcl --gui      # the checks live in a window
 ```
 
-The work folder defaults to `%TEMP%\leonida_xcl_compare`. It must not be on `D:`: XCL maps the console drive `D:`
+The work folder defaults to `%TEMP%\dstn_xcl_compare`. It must not be on `D:`: XCL maps the console drive `D:`
 to the game folder, so a real `D:\` path is not reachable inside XCL and the title fails to load. The report is
 `report.json` in the work folder (`--out` to change it). Everything each title printed is in `xcl_output.txt` and
-`leonida_output.txt` beside it. A check counts as a difference when its status or its reason differs between the
+`dstn_output.txt` beside it. A check counts as a difference when its status or its reason differs between the
 two runs, so a check that fails in both for different reasons is still listed.
 
 A check that prints nothing for `--timeout` seconds (15 by default) is a hang. The tool records the stacks of the
@@ -54,7 +54,7 @@ Windows 11, RTX 5070 Ti (driver 616.92), MSVC 19.44, Windows SDK 10.0.26100, run
 | Runtime | Pass | Fail | Hang |
 |---|---:|---:|---:|
 | XCL | 50 | 0 | 0 |
-| gta6rt | 5 | 43 | 2 |
+| dstnrt | 5 | 43 | 2 |
 
 XCL passes all 50 on this NVIDIA GPU, so its open gap on 32-wide-wave GPUs (wave64 compute, geometry and mesh
 programs refused) does not affect this title. The D3D12 call traces were recorded (`--trace-d3d12`), but the runtime
@@ -65,7 +65,7 @@ What the differences come down to:
 | Difference | Reading |
 |---|---|
 | Both hangs: `XTaskQueueTerminate(queue, wait = true)` on a manual queue, from the thread that dispatches it (`TaskQueueImpl::Terminate` waits on its condition variable) | Not a runtime bug. The reference implementation in `third_party/xtaskqueue` behaves this way, and Microsoft's `XTaskQueueTerminate` documentation warns that waiting from the dispatching thread can deadlock. XCL returns there; the title relies on that. |
-| `GetModuleHandle(NULL)` and `current_exe` name `gta6rt.exe`, not the title | Covered by open #2075 (the mapped executable's module identity). |
+| `GetModuleHandle(NULL)` and `current_exe` name `dstnrt.exe`, not the title | Covered by open #2075 (the mapped executable's module identity). |
 | `G:\` and `T:\` console paths | RT-218 (claimed). |
 | Persistent local storage | RT-219 (claimed). |
 | XUser, XGameSave folder | #279 and #3363 (open). |

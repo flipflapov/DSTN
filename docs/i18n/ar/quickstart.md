@@ -1,13 +1,13 @@
 <div dir="rtl" lang="ar">
 
-# دليل البدء السريع لمشروع Leonida
+# دليل البدء السريع لمشروع DSTN
 
 الوثائق الإنجليزية هي المرجع المعتمد. يستند هذا الدليل إلى المراجعة `561b65a` ويغطي خطوات البدء الأساسية.
 راجع [ملف README بالإنجليزية](../../../README.md#project-status) لمعرفة حالة المشروع الحالية، و[فهرس الوثائق](../../README.md) للمزيد من التفاصيل.
 
-## ما هو Leonida؟
+## ما هو DSTN؟
 
-Leonida مشروع لإعادة ترجمة إصدار Xbox Series من Grand Theft Auto VI لتشغيله مباشرةً على Windows.
+DSTN مشروع لإعادة ترجمة إصدار Xbox Series من Grand Theft Auto VI لتشغيله مباشرةً على Windows.
 يُبنى المشروع على جهازك من نسختك الخاصة من اللعبة. تُترجم برامج التظليل من RDNA2 إلى SPIR-V لاستخدامها مع Vulkan،
 وتُقرأ الموارد من حزمة اللعبة المحلية، ويُعيد المشروع تنفيذ واجهات النظام التي تحتاجها اللعبة.
 
@@ -40,12 +40,12 @@ Leonida مشروع لإعادة ترجمة إصدار Xbox Series من Grand The
 
 ```powershell
 git clone --recursive https://github.com/ItsNotRexed/Leonida
-cd Leonida
+cd DSTN
 ```
 
 انقر نقرًا مزدوجًا على `Build.bat`. يبحث البرنامج عن نسختك على الجهاز. إذا وجد أكثر من نسخة فسيطلب منك الاختيار،
 وإذا لم يجد أي نسخة فسيطلب مسار المجلد. يتحقق من الأدوات والمساحة المتاحة قبل بدء البناء. تُحفظ النتيجة افتراضيًا
-في `Documents\Leonida`، ويمكن استئناف البناء إذا توقف.
+في `Documents\DSTN`، ويمكن استئناف البناء إذا توقف.
 
 ### البناء من PowerShell
 
@@ -56,7 +56,7 @@ cd Leonida
 python -I make_game.py --find
 python -I make_game.py --check
 python -I make_game.py --check --full-check
-python -I make_game.py --game "D:\path\to\package" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\path\to\package" --out "D:\Games\DSTN" --work "E:\dstn-work"
 ```
 
 ترتيب المراحل هو `check` ثم `shaders` ثم `assets` ثم `runtime` ثم `pipelines`.

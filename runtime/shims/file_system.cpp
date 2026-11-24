@@ -10,7 +10,7 @@
 //   - an open that can write, and DeleteFile, go to the overlay (--overlay, default <game-dir>\\overlay), so the
 //     package stays exactly as installed. A write-open of a package file copies it into the overlay first, so
 //     OPEN_EXISTING keeps its bytes; a delete of a package file leaves an empty marker under
-//     <overlay>\\.gta6rt-deleted, and reads and listings treat the name as gone. The marker is never removed and a
+//     <overlay>\\.dstnrt-deleted, and reads and listings treat the name as gone. The marker is never removed and a
 //     deleted name is never copied up: a re-created file is its overlay copy, which reads and listings already
 //     prefer, while an open of a deleted name that fails leaves the name deleted;
 //   - reads prefer the overlay copy and then the package;
@@ -45,13 +45,13 @@ namespace {
 
 constexpr wchar_t kGamePrefix[] = L"game:";
 constexpr size_t kGamePrefixLength = 5;
-constexpr wchar_t kDeletedDir[] = L".gta6rt-deleted";
-constexpr wchar_t kScratchDir[] = L".gta6rt-temp";  // what "T:\" names, inside the overlay
+constexpr wchar_t kDeletedDir[] = L".dstnrt-deleted";
+constexpr wchar_t kScratchDir[] = L".dstnrt-temp";  // what "T:\" names, inside the overlay
 // A removed package folder is marked by this file inside its marker folder: the marker folder itself can already
 // exist because files below it were deleted, and that alone does not hide the folder.
-constexpr wchar_t kRemovedDirMarker[] = L".gta6rt-dir";
+constexpr wchar_t kRemovedDirMarker[] = L".dstnrt-dir";
 // Copy-up writes here first and then renames into place, so a half-copied file never sits under the title's name.
-constexpr wchar_t kCopyDir[] = L".gta6rt-copy";
+constexpr wchar_t kCopyDir[] = L".dstnrt-copy";
 
 // The overlay root's own folders, which a title never sees in a listing.
 bool internal_dir(const wchar_t* name) {
@@ -121,7 +121,7 @@ bool lies_under(const std::wstring& path, const std::filesystem::path& root) {
 // other console layers map those two drives (RT-218). Only the executable can say which spelling the title uses, so
 // a host drive of the same letter must keep working: a path under --game-dir or the overlay (a package on drive G:,
 // or a path GetModuleFileName handed back) stays a host path, and so does every G:/T: path while no roots are
-// configured. The scratch folder lives in the overlay, as `.gta6rt-temp`.
+// configured. The scratch folder lives in the overlay, as `.dstnrt-temp`.
 enum class Drive { None, Game, Scratch };
 
 Drive console_drive(const std::wstring& path, size_t& prefix_length) {
@@ -219,7 +219,7 @@ std::filesystem::path marker(const std::filesystem::path& overlay, const std::ve
 bool deleted(const std::filesystem::path& overlay, const std::vector<std::wstring>& parts) {
     if (overlay.empty() || parts.empty()) return false;
     std::error_code ec;
-    // Only regular files are deletion markers; parent directories inside .gta6rt-deleted/ exist only to hold markers
+    // Only regular files are deletion markers; parent directories inside .dstnrt-deleted/ exist only to hold markers
     // for nested deleted files and must not hide the corresponding ancestor directories in the package.
     const std::filesystem::path m = marker(overlay, parts);
     return std::filesystem::is_regular_file(m, ec) || std::filesystem::is_regular_file(m / kRemovedDirMarker, ec);

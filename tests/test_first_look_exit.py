@@ -33,9 +33,9 @@ class FirstLookExitTest(unittest.TestCase):
             )
             compile_loader = (
                 "$ErrorActionPreference = 'Stop'; "
-                "Add-Type -OutputAssembly gta6rt.exe -OutputType ConsoleApplication -TypeDefinition @'\n"
+                "Add-Type -OutputAssembly dstnrt.exe -OutputType ConsoleApplication -TypeDefinition @'\n"
                 "public class Loader { public static int Main() {\n"
-                "    int code = int.Parse(System.Environment.GetEnvironmentVariable(\"LEONIDA_TEST_LOADER_EXIT\"));\n"
+                "    int code = int.Parse(System.Environment.GetEnvironmentVariable(\"DSTN_TEST_LOADER_EXIT\"));\n"
                 "    (code == 0 ? System.Console.Out : System.Console.Error).WriteLine(\"synthetic dry run\");\n"
                 "    return code;\n"
                 "} }\n'@"
@@ -44,14 +44,14 @@ class FirstLookExitTest(unittest.TestCase):
             # Keep Core's modules out of Windows PowerShell's search path when Python was started from pwsh.
             env["PSModulePath"] = str(Path(os.environ["SystemRoot"]) / "System32/WindowsPowerShell/v1.0/Modules")
             subprocess.run([*POWERSHELL, "-Command", compile_loader], cwd=build, env=env, check=True, timeout=30)
-            (build / "gta6rt_tls_host.dll").touch()
+            (build / "dstnrt_tls_host.dll").touch()
             for code in (0, 17):
                 with self.subTest(loader_exit_code=code):
                     image = root / f"fixture-{code}.exe"
                     image.write_bytes(b"MZ")
                     result = subprocess.run(
                         [*POWERSHELL, "-File", str(wrapper), "-Exe", str(image)],
-                        env={**env, "LEONIDA_TEST_LOADER_EXIT": str(code)}, capture_output=True, text=True, timeout=30,
+                        env={**env, "DSTN_TEST_LOADER_EXIT": str(code)}, capture_output=True, text=True, timeout=30,
                     )
                     report = root / "reports" / "exe" / image.stem
                     self.assertTrue((report / "shim-todo.txt").is_file(), result.stdout + result.stderr)

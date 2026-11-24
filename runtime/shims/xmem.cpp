@@ -31,7 +31,7 @@ namespace {
 
 constexpr size_t kAlign = 64;
 
-// gta6rt --trace FILE: the first XMemAlloc and the first XMemFree for each distinct raw attribute word go to the
+// dstnrt --trace FILE: the first XMemAlloc and the first XMemFree for each distinct raw attribute word go to the
 // startup trace as an "xmem_attributes" event (api, the word, the size for an allocation, the caller as module+RVA). The
 // bits of the attribute word are not known yet; this records them from a real run without logging every allocation,
 // which would fill the file. Off: one relaxed load per call.
@@ -236,7 +236,7 @@ UINT WINAPI XMemResetWriteWatch(void* base_address, SIZE_T region_size) {
 // that is not a multiple of 2 MiB. Refusing would stop a title at startup (both samples return -1), while succeeding
 // changes nothing here. TRUE is 1 in EAX, so it also reads as true if the real return type is a one-byte bool.
 //
-// gta6rt --trace FILE: the first call for each distinct (type, size) pair goes to the startup trace as an
+// dstnrt --trace FILE: the first call for each distinct (type, size) pair goes to the startup trace as an
 // "xmem_transfer" event with the caller as module+RVA, so a run with the executable records the values it passes.
 BOOL WINAPI XMemTransferMemory(uint32_t type, SIZE_T size) {
     static std::atomic<bool> warned{false};

@@ -26,7 +26,7 @@ void write(const std::filesystem::path& p, const std::string& text) {
 }  // namespace
 
 int main() {
-    using namespace leonida::mods;
+    using namespace dstn::mods;
 
     // The model ids docs/character_skeleton.md measured in the packs tables are the joaat of their names.
     static_assert(joaat("player_story000_00") == 0xE472B687u, "Lucia's player model id");
@@ -84,7 +84,7 @@ int main() {
     set_active_camera(camera_of({}));
     check(override_view_mode(3, 0) == 3, "with no camera mod the game's view mode passes through");
 
-    const auto dir = std::filesystem::temp_directory_path() / "leonida_mods_test";
+    const auto dir = std::filesystem::temp_directory_path() / "dstn_mods_test";
     std::filesystem::remove_all(dir);
     write(dir / "a_mandy" / "mod.json",
           R"({"name":"Mandy","archetype_swaps":[{"from":"player_story000_00","to":"cs_mandy","when":"always"}]})");

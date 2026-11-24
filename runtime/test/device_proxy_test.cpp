@@ -109,7 +109,7 @@ bool load_compute_shader(ComPtr<ID3DBlob>& bytecode) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    // --trace-d3d12, as gta6rt takes it: device_proxy_trace checks that the parameter words still print then.
+    // --trace-d3d12, as dstnrt takes it: device_proxy_trace checks that the parameter words still print then.
     if (argc == 2 && std::strcmp(argv[1], "--trace-d3d12") == 0) rt::d3d12_trace::set_enabled(true);
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     std::printf("device_proxy_test: Xbox-ABI device proxy over WARP\n");

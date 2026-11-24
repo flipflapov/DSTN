@@ -1,4 +1,4 @@
-# Leonida — Hızlı Başlangıç (`tr`)
+# DSTN — Hızlı Başlangıç (`tr`)
 
 > [!NOTE]
 > İngilizce dokümantasyon ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) ve
@@ -6,9 +6,9 @@
 > yönergelerini kapsar (`561b65a` commit'ine göre eşitlenmiştir). Günlük değişen proje durumu için
 > [`README.md`](../../../README.md) dosyasına bakın.
 
-## Leonida Nedir?
+## DSTN Nedir?
 
-Leonida, Grand Theft Auto VI'nın Xbox Series sürümünü Windows üzerinde yerel olarak çalıştırmayı hedefleyen statik
+DSTN, Grand Theft Auto VI'nın Xbox Series sürümünü Windows üzerinde yerel olarak çalıştırmayı hedefleyen statik
 yeniden derleme (recompilation) projesidir. Port, **kendi bilgisayarınızda ve kendi oyun kopyanızdan** oluşturulur.
 Konsolun önceden derlenmiş RDNA2 GPU shader'ları Vulkan için SPIR-V'ye çevrilir, oyun varlıkları doğrudan kendi
 paketinizden okunur ve konsolun sistem yazılımları shim katmanlarıyla yeniden uygulanır.
@@ -69,7 +69,7 @@ Proje henüz erken aşamadadır: **oyun şu an açılmıyor**.
 Betik oyun kopyanızı kendisi arar (İndirilenler, Masaüstü, Belgeler, Games, kullanıcı klasörünüz ve her sürücünün kök
 dizininden iki seviye derine kadar). Büyük dosyaları okumadan yalnızca birkaç dosya boyutundan sürümü tanır. Birden
 fazla kopya bulursa hangisini kullanacağınızı, hiç bulamazsa klasör yolunu yapıştırmanızı ister. Başlamadan önce
-gereksinimleri ve boş disk alanını denetleyip eksikleri tek seferde listeler. Çıktı `Documents\Leonida` klasörüne
+gereksinimleri ve boş disk alanını denetleyip eksikleri tek seferde listeler. Çıktı `Documents\DSTN` klasörüne
 yazılır; yarım kalan bir derleme kaldığı yerden devam eder.
 
 ### Terminalden (`make_game.py`)
@@ -77,7 +77,7 @@ yazılır; yarım kalan bir derleme kaldığı yerden devam eder.
 ```powershell
 python -I make_game.py --find                          # bilgisayarda bulunan kopyaları listele
 python -I make_game.py --check                         # kopyayı doğrula, derleme yapma
-python -I make_game.py --game "D:\paket\yolu" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\paket\yolu" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # yalnızca seçili aşamaları çalıştır
 python -I make_game.py --game "D:\paket\yolu" --wav    # Opus akışlarını ayrıca PCM WAV'a çöz (büyük boyut)
 python -I make_game.py --wave64-emulate off            # auto (varsayılan), on veya off
@@ -92,13 +92,13 @@ Aşamalar şu sırayla çalışır: `check` → `shaders` → `assets` → `runt
   30 GB, `assets` aşaması için yaklaşık 370 GB yeterlidir). En uzun adım shader çevirisidir ve varsayılan olarak
   CPU iş parçacıklarının yarısını kullanır (`--jobs` ile değiştirilebilir).
 - **`--wav`**: Varsayılan olarak kapalıdır; 16-bit PCM WAV dosyaları Ogg Opus'tan birkaç kat daha büyüktür.
-- **Linux ve Wine/Proton**: `make_game.py` Linux'ta da çalışır. Yükleyici (`gta6rt.exe`) bir Windows programıdır ve
+- **Linux ve Wine/Proton**: `make_game.py` Linux'ta da çalışır. Yükleyici (`dstnrt.exe`) bir Windows programıdır ve
   Wine veya Proton altında çalışır. Linux'ta `runtime` aşaması, `clang-cl` + `lld-link` (LLVM 19+) ve
   [xwin](https://github.com/Jake-Shadle/xwin) (`XWIN_DIR` veya `~/.local/share/xwin-sdk`; tek seferlik kurulum için
   bkz. [`docs/testing.md`](../../testing.md#the-windows-runtime-on-linux-under-wine-or-proton)) ile `runtime/build/windows`
   içine çapraz derleme yapabilir ya da `--runtime-build <klasör>` ile önceden derlenmiş bir Windows runtime'ını
-  (`gta6rt.exe` ve `gta6rt_tls_host.dll`, örn. CI'daki `runtime-windows` paketi) doğrudan kopyalayabilir. Her iki durumda
-  da çıkış klasörüne `gta6rt.sh` başlatıcısını yazar (`wine` veya `WINE` ortam değişkeni ile çalıştırılır).
+  (`dstnrt.exe` ve `dstnrt_tls_host.dll`, örn. CI'daki `runtime-windows` paketi) doğrudan kopyalayabilir. Her iki durumda
+  da çıkış klasörüne `dstnrt.sh` başlatıcısını yazar (`wine` veya `WINE` ortam değişkeni ile çalıştırılır).
 
 ## Sık Karşılaşılan Sorunlar
 
@@ -110,7 +110,7 @@ Aşamalar şu sırayla çalışır: `check` → `shaders` → `assets` → `runt
 - **CMake "needs the Windows SDK 10.0.26100 or newer" hatası veriyor** (veya MSVC `Desc_1_2` üyesini bulamıyor):
   Visual Studio Installer üzerinden ya da `winget install Microsoft.WindowsSDK.10.0.26100` komutuyla Windows SDK'yı
   güncelleyin, `runtime/build` klasörünü silip yeniden yapılandırın.
-- **`C:` sürücüsünde yer kalmadı**: Çalışma dosyalarını başka bir sürücüye taşımak için `--work "D:\leonida-work"`
+- **`C:` sürücüsünde yer kalmadı**: Çalışma dosyalarını başka bir sürücüye taşımak için `--work "D:\dstn-work"`
   parametresini verin.
 - **Windows yeni derlenen test programlarını engelliyor** (*"An Application Control policy has blocked this file"*):
   Windows 11 Akıllı Uygulama Denetimi kaynaklıdır; bkz. [`docs/testing.md`](../../testing.md#known-problems).

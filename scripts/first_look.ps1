@@ -28,7 +28,7 @@ Write-Host "`n== GDK runtime classes and slots called through xgameruntime.lib (
 python -I (Join-Path $root "tools\gdk_runtime_calls.py") $Exe --out $out
 if ($LASTEXITCODE -ne 0) { Write-Warning "gdk_runtime_calls could not read all of $Exe; its report may be incomplete" }
 
-Write-Host "`n== Archetype lookup candidates for mods (docs/modding.md; pass the top RVA to gta6rt --archetype-lookup)"
+Write-Host "`n== Archetype lookup candidates for mods (docs/modding.md; pass the top RVA to dstnrt --archetype-lookup)"
 python -I (Join-Path $root "tools\find_hash_lookup.py") $Exe --json (Join-Path $out "hash_lookup.json")
 if ($LASTEXITCODE -ne 0) { Write-Warning "find_hash_lookup could not scan $Exe" }
 
@@ -39,18 +39,18 @@ if (Test-Path $calls) { $checklistArgs += @("--gdk-calls", $calls) }
 python -I (Join-Path $root "tools\exe_checklist.py") @checklistArgs
 if ($LASTEXITCODE -ne 0) { Write-Warning "exe_checklist could not write the checklist" }
 
-$rt = Join-Path $root "runtime\build\gta6rt.exe"
-$tlsHost = Join-Path $root "runtime\build\gta6rt_tls_host.dll"
+$rt = Join-Path $root "runtime\build\dstnrt.exe"
+$tlsHost = Join-Path $root "runtime\build\dstnrt_tls_host.dll"
 $runtimeFiles = @($rt, $tlsHost)
 $missing = @($runtimeFiles | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
-# A gta6rt.exe older than the runtime sources (a pull since the last build) would report the old shim table, so it
+# A dstnrt.exe older than the runtime sources (a pull since the last build) would report the old shim table, so it
 # is rebuilt then too, not only when missing.
 $sources = @("runtime\src", "runtime\shims", "runtime\CMakeLists.txt") | ForEach-Object { Join-Path $root $_ } |
     Where-Object { Test-Path $_ }
 $newest = $sources | Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 $stale = ($missing.Count -eq 0) -and $newest -and ($newest.LastWriteTimeUtc -gt (Get-Item -LiteralPath $rt).LastWriteTimeUtc)
-if ($stale) { Write-Host "runtime\build\gta6rt.exe is older than $($newest.Name): rebuilding it first" }
+if ($stale) { Write-Host "runtime\build\dstnrt.exe is older than $($newest.Name): rebuilding it first" }
 if ($missing.Count -gt 0 -or $stale) {
     if ($missing.Count -gt 0) { Write-Host "Missing runtime files: $($missing -join ', '); rebuilding the runtime" }
     & (Join-Path $PSScriptRoot "build_runtime.ps1")

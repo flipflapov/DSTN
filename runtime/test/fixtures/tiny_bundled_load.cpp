@@ -1,6 +1,6 @@
 // A mapped program that loads a bundled Xbox DLL (tiny_bundled_dll.dll, which imports xmem.dll) at run time via
 // LoadLibraryW, GetModuleHandle, GetProcAddress and FreeLibrary — the pattern used by titles that dynamically load
-// Bink2Scarlett.dll, XboxBvhBuilder.dll or the FidelityFX DLLs. Under `gta6rt --run`, library_loader.cpp routes the
+// Bink2Scarlett.dll, XboxBvhBuilder.dll or the FidelityFX DLLs. Under `dstnrt --run`, library_loader.cpp routes the
 // load to rt::Loader so the DLL's xmem.dll imports bind to the shim registry instead of failing under the host loader.
 // Ordinary test code; no game data.
 #include <windows.h>

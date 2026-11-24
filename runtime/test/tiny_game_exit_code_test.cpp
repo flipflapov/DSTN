@@ -1,4 +1,4 @@
-// Check the exact process exit code returned by gta6rt after the synthetic guest exits.
+// Check the exact process exit code returned by dstnrt after the synthetic guest exits.
 #include <windows.h>
 
 #include <cstdio>
@@ -93,7 +93,7 @@ std::string format_exit_query_failure(const ExitQueryResult& result) {
     char message[160]{};
     switch (result.status) {
     case ExitQueryStatus::timed_out:
-        std::snprintf(message, sizeof(message), "timed out waiting for gta6rt after %lu ms (wait result %#lx)\n",
+        std::snprintf(message, sizeof(message), "timed out waiting for dstnrt after %lu ms (wait result %#lx)\n",
                       kProcessWaitTimeoutMs, result.wait_result);
         break;
     case ExitQueryStatus::wait_failed:
@@ -162,7 +162,7 @@ bool run_diagnostic_self_tests() {
     passed &= expect(g_fake_api_state.get_exit_code_calls == 0 && g_fake_api_state.last_error_calls == 0,
                      "timeout neither queries the exit code nor reports a stale Win32 error");
     passed &= expect(format_exit_query_failure(result) ==
-                         "timed out waiting for gta6rt after 30000 ms (wait result 0x102)\n",
+                         "timed out waiting for dstnrt after 30000 ms (wait result 0x102)\n",
                      "timeout diagnostic retains its duration and wait result");
 
     reset_fake_api();
@@ -193,7 +193,7 @@ int wmain(int argc, wchar_t** argv) {
         return 0;
     }
     if (argc != 3) {
-        std::fprintf(stderr, "usage: tiny_game_exit_code_test <gta6rt.exe> <tiny_game.exe>\n");
+        std::fprintf(stderr, "usage: tiny_game_exit_code_test <dstnrt.exe> <tiny_game.exe>\n");
         return 1;
     }
 
@@ -202,7 +202,7 @@ int wmain(int argc, wchar_t** argv) {
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION child{};
     if (!CreateProcessW(argv[1], command.data(), nullptr, nullptr, TRUE, 0, nullptr, nullptr, &startup, &child)) {
-        std::fprintf(stderr, "could not start gta6rt (Win32 error %lu)\n", GetLastError());
+        std::fprintf(stderr, "could not start dstnrt (Win32 error %lu)\n", GetLastError());
         return 1;
     }
     CloseHandle(child.hThread);
@@ -219,9 +219,9 @@ int wmain(int argc, wchar_t** argv) {
         return 1;
     }
     if (result.exit_code != 42) {
-        std::fprintf(stderr, "gta6rt exited with code %lu, expected guest exit code 42\n", result.exit_code);
+        std::fprintf(stderr, "dstnrt exited with code %lu, expected guest exit code 42\n", result.exit_code);
         return 1;
     }
-    std::printf("gta6rt returned the expected guest exit code 42\n");
+    std::printf("dstnrt returned the expected guest exit code 42\n");
     return 0;
 }

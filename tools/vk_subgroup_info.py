@@ -5,10 +5,10 @@
 
 make_game.py uses it to choose between native wave64 translation and --wave64-emulate. It talks to the system's
 Vulkan implementation through ctypes (standard library only), so it works before the runtime stage has built anything.
-On macOS it opens MoltenVK directly, using the same LEONIDA_VULKAN_LOADER override as the C++ test tools.
+On macOS it opens MoltenVK directly, using the same DSTN_VULKAN_LOADER override as the C++ test tools.
 
 Device choice follows the runtime (runtime/shims/d3d12_vulkan_device.cpp, runtime/src/vulkan_device_filter.h):
-LEONIDA_VK_DEVICE filters by deviceName substring case-insensitively (failing when nothing matches). Eligible devices
+DSTN_VK_DEVICE filters by deviceName substring case-insensitively (failing when nothing matches). Eligible devices
 need Vulkan 1.3 or Vulkan 1.2 with VK_KHR_dynamic_rendering and VK_KHR_synchronization2. They also need the corresponding
 feature bits, timelineSemaphore, separateDepthStencilLayouts, bufferDeviceAddress, and a graphics queue family. Among
 those the first of the highest rank wins: a native driver over Microsoft's Dozen
@@ -144,7 +144,7 @@ def load_vulkan():
     if os.name == "nt":
         names = ["vulkan-1.dll"]
     elif sys.platform == "darwin":
-        override = os.environ.get("LEONIDA_VULKAN_LOADER")
+        override = os.environ.get("DSTN_VULKAN_LOADER")
         names = [override] if override else ["libMoltenVK.dylib", "/opt/homebrew/lib/libMoltenVK.dylib"]
     else:
         names = ["libvulkan.so.1", "libvulkan.1.dylib"]
@@ -220,7 +220,7 @@ def query(*, stage_caps=False) -> dict:
     vk.vkGetPhysicalDeviceFeatures2.argtypes = [vp, vp]
     vk.vkGetPhysicalDeviceQueueFamilyProperties.argtypes = [vp, vp, vp]
     vk.vkDestroyInstance.argtypes = [vp, vp]
-    app = AppInfo(VK_STRUCTURE_TYPE_APPLICATION_INFO, None, b"leonida-subgroup-info", 1, None, 0, VK_API_VERSION_1_3)
+    app = AppInfo(VK_STRUCTURE_TYPE_APPLICATION_INFO, None, b"dstn-subgroup-info", 1, None, 0, VK_API_VERSION_1_3)
     info = InstanceInfo(VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, None, 0, ctypes.pointer(app), 0, None, 0, None)
     inst = ctypes.c_void_p()
     r = vk.vkCreateInstance(ctypes.byref(info), None, ctypes.byref(inst))
@@ -230,7 +230,7 @@ def query(*, stage_caps=False) -> dict:
         devs = physical_devices(vk, inst)
         if not devs:
             raise RuntimeError("no Vulkan device")
-        device_filter = os.environ.get("LEONIDA_VK_DEVICE", "")
+        device_filter = os.environ.get("DSTN_VK_DEVICE", "")
         wanted = device_filter.lower()
         chosen = None
         chosen_rank = -1
@@ -297,7 +297,7 @@ def query(*, stage_caps=False) -> dict:
         if chosen is None:
             if device_filter:
                 raise RuntimeError(
-                    f"LEONIDA_VK_DEVICE={device_filter}: no Vulkan 1.3 GPU with the features and graphics queue "
+                    f"DSTN_VK_DEVICE={device_filter}: no Vulkan 1.3 GPU with the features and graphics queue "
                     "the runtime needs matches"
                 )
             raise RuntimeError("no Vulkan 1.3 GPU with the features and graphics queue the runtime needs")

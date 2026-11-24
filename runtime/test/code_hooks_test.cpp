@@ -19,7 +19,7 @@ void check(bool ok, const char* what) {
 }
 
 uint32_t remap_lucia(uint32_t hash) {
-    return hash == leonida::mods::joaat("player_story000_00") ? leonida::mods::joaat("cs_mandy") : hash;
+    return hash == dstn::mods::joaat("player_story000_00") ? dstn::mods::joaat("cs_mandy") : hash;
 }
 
 void put(uint8_t* at, std::initializer_list<uint8_t> bytes) {
@@ -43,7 +43,7 @@ void caller(uint8_t* at, const uint8_t* to) {
 }  // namespace
 
 int main() {
-    using namespace leonida::hooks;
+    using namespace dstn::hooks;
     uint8_t* mem = alloc_near(reinterpret_cast<const void*>(&remap_lucia), 4096);
     check(mem != nullptr, "executable memory near the module");
     if (!mem) return 1;

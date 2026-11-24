@@ -20,7 +20,7 @@
 
 namespace {
 
-using namespace leonida;
+using namespace dstn;
 
 // OcclusionResolve keeps these capacities private (runtime/src/vulkan_backend.h). Pin the expected boundaries
 // here so a change to its chunking still has an independent oracle; derive public result sizes from the IR.
@@ -844,7 +844,7 @@ PFN_vkVoidFunction VKAPI_CALL get(VkDevice, const char* name) {
     if (std::string_view(name) == #n) {                                \
         return reinterpret_cast<PFN_vkVoidFunction>(driver.n);         \
     }
-    LEONIDA_VK_DEVICE_FUNCTIONS(MOCK_DEVICE_FUNCTION)
+    DSTN_VK_DEVICE_FUNCTIONS(MOCK_DEVICE_FUNCTION)
 #undef MOCK_DEVICE_FUNCTION
     return nullptr;
 }

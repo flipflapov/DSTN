@@ -1,14 +1,14 @@
 // Process-level imports of a mapped executable: its command line and its way out.
 //
-// `gta6rt --run` calls a mapped EXE's entry point inside the gta6rt process. The EXE's CRT startup asks for its
+// `dstnrt --run` calls a mapped EXE's entry point inside the dstnrt process. The EXE's CRT startup asks for its
 // arguments and finally calls exit(); both go through the EXE's own import table, so they can be answered here:
-//   - argv/argc and the command line are the game's (set by run_entry), not gta6rt's;
+//   - argv/argc and the command line are the game's (set by run_entry), not dstnrt's;
 //   - exit(), _exit(), quick_exit(), ExitProcess() and abort() from the game end the game's run, not the host:
 //     the exit code is recorded, the run is signalled as finished and the calling thread waits for the host to
 //     exit;
 //   - the game's atexit registrations (_crt_atexit, which MSVC's atexit and static destructors reach; msvcrt's
 //     atexit and _onexit) go to a table of the run's own instead of the CRT's process-wide one, which the game
-//     shares with gta6rt. exit() runs it newest first, as the CRT does, before the run ends; _exit(), _Exit(),
+//     shares with dstnrt. exit() runs it newest first, as the CRT does, before the run ends; _exit(), _Exit(),
 //     quick_exit(), ExitProcess() and abort() do not. _cexit() runs it and returns, _c_exit() returns. A second
 //     thread that calls exit(), _exit(), _Exit() or quick_exit() while the first is leaving waits, as with the
 //     CRT's exit lock. Not covered yet: at_quick_exit() handlers (quick_exit() runs none) and the thread-local
@@ -229,14 +229,14 @@ wchar_t* __cdecl game_get_wide_winmain_command_line() { return after_program_nam
 char** current_environment() {
     if (!_environ) {
         size_t size = 0;
-        (void)getenv_s(&size, nullptr, 0, "LEONIDA_RT_ENV_INIT");
+        (void)getenv_s(&size, nullptr, 0, "DSTN_RT_ENV_INIT");
     }
     return _environ;
 }
 wchar_t** current_wide_environment() {
     if (!_wenviron) {
         size_t size = 0;
-        (void)_wgetenv_s(&size, nullptr, 0, L"LEONIDA_RT_ENV_INIT");
+        (void)_wgetenv_s(&size, nullptr, 0, L"DSTN_RT_ENV_INIT");
     }
     return _wenviron;
 }

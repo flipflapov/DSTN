@@ -76,7 +76,7 @@ int main() {
         for (int l = 0; l < 3; ++l) {
             ID3D12CommandList* batch[] = {lists[l].p};
             queues[q]->ExecuteCommandLists(1, batch);
-            const bool ran = rt::d3d12::last_execute_result(queues[q].p) == leonida::ReplayResult::success;
+            const bool ran = rt::d3d12::last_execute_result(queues[q].p) == dstn::ReplayResult::success;
             char what[96];
             std::snprintf(what, sizeof what, "a %s list on a %s queue %s", name(types[l]), name(types[q]),
                           l == q ? "runs" : "is refused");
@@ -121,13 +121,13 @@ int main() {
 
     ID3D12CommandList* mixed[] = {copy_list.p, lists[2].p};  // DIRECT, then COPY, on the DIRECT queue
     queues[0]->ExecuteCommandLists(2, mixed);
-    check(rt::d3d12::last_execute_result(queues[0].p) != leonida::ReplayResult::success,
+    check(rt::d3d12::last_execute_result(queues[0].p) != dstn::ReplayResult::success,
           "a batch with a COPY list on the DIRECT queue is refused");
     check(wait_idle(device.p, queues[0].p) && read_word() == 0, "and its matching DIRECT list did not run either");
 
     ID3D12CommandList* alone[] = {copy_list.p};
     queues[0]->ExecuteCommandLists(1, alone);
-    check(rt::d3d12::last_execute_result(queues[0].p) == leonida::ReplayResult::success,
+    check(rt::d3d12::last_execute_result(queues[0].p) == dstn::ReplayResult::success,
           "the DIRECT list alone runs on the DIRECT queue");
     check(wait_idle(device.p, queues[0].p) && read_word() == marker, "and its copy lands");
 

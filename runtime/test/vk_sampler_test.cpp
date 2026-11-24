@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
         std::fprintf(stderr, "usage: vk_sampler_test <vs.spv> <fs.spv> <out.raw> <s0> <s1> <s2> <s3> [<base> <last>]\n");
         return 2;
     }
-    namespace gfx10 = leonida::gfx10;
+    namespace gfx10 = dstn::gfx10;
     constexpr std::uint32_t W = 64, H = 64, TW = 128, levels = 2;
     constexpr std::uint32_t table_va = 256;  // console VA of the T# (8 dwords); the S# follows at +32
     gfx10::SamplerWords ssharp{};
@@ -101,18 +101,18 @@ int main(int argc, char** argv) {
     for (auto d : pds) {
         VkPhysicalDeviceProperties p;
         vkGetPhysicalDeviceProperties(d, &p);
-        if (p.apiVersion < VK_API_VERSION_1_2 || !leonida::vulkan_device_wanted(p.deviceName)) continue;
+        if (p.apiVersion < VK_API_VERSION_1_2 || !dstn::vulkan_device_wanted(p.deviceName)) continue;
         // the runtime's pick: the first device of the highest rank (native driver over Dozen, #915)
-        if (const int rank = leonida::vulkan_device_rank(static_cast<int>(p.deviceType), p.vendorID);
+        if (const int rank = dstn::vulkan_device_rank(static_cast<int>(p.deviceType), p.vendorID);
             rank > best_rank) {
             best_rank = rank;
             pd = d;
             props = p;
         }
     }
-    if (!pd && !leonida::vulkan_device_filter().empty()) {  // a filter matching nothing fails, never skips
-        std::fprintf(stderr, "LEONIDA_VK_DEVICE=%s: no Vulkan 1.2 device matches\n",
-                     leonida::vulkan_device_filter().c_str());
+    if (!pd && !dstn::vulkan_device_filter().empty()) {  // a filter matching nothing fails, never skips
+        std::fprintf(stderr, "DSTN_VK_DEVICE=%s: no Vulkan 1.2 device matches\n",
+                     dstn::vulkan_device_filter().c_str());
         return 1;
     }
     if (!pd) { std::printf("unsupported: no Vulkan 1.2 device\n"); return unsupported; }
@@ -128,8 +128,8 @@ int main(int argc, char** argv) {
         return unsupported;
     }
     const auto fragment_code = read_spv(argv[2]);
-    const bool dynamic_sampled = leonida::vk_test::spirv_declares_capability(
-        fragment_code.data(), fragment_code.size() * 4, leonida::vk_test::spv_sampled_image_array_dynamic_indexing);
+    const bool dynamic_sampled = dstn::vk_test::spirv_declares_capability(
+        fragment_code.data(), fragment_code.size() * 4, dstn::vk_test::spv_sampled_image_array_dynamic_indexing);
     if (dynamic_sampled && !have.features.shaderSampledImageArrayDynamicIndexing) {
         std::printf("unsupported: shaderSampledImageArrayDynamicIndexing\n");
         return unsupported;
@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
     enable.features.shaderInt64 = VK_TRUE;
     enable.features.shaderSampledImageArrayDynamicIndexing = dynamic_sampled;
     enable.features.samplerAnisotropy = sampler_info.anisotropyEnable;
-    leonida::vk_test::ShaderFma fma;      // OpFmaKHR (rdna2spirv.py --fma khr), when the device has it
+    dstn::vk_test::ShaderFma fma;      // OpFmaKHR (rdna2spirv.py --fma khr), when the device has it
     fma.query(gipa, inst, pd);
     // A device without VK_KHR_shader_fma cannot create a pipeline from a stage that uses OpFmaKHR: skip the pair.
     if (!fma.accepts_file(argv[1]) || !fma.accepts_file(argv[2])) return unsupported;
@@ -257,9 +257,9 @@ int main(int argc, char** argv) {
     address_info.buffer = heap;
     const VkDeviceAddress heap_base = vkGetBufferDeviceAddress(dev, &address_info);
     // Descriptor hash table: the T# names image 1, the S# sampler 1. Index 0 of each is a magenta fallback.
-    leonida::DescriptorTable table(16);
+    dstn::DescriptorTable table(16);
     table.insert(tsharp.data(), 1);
-    table.insert(leonida::make_ssharp_key(ssharp.data()).data(), 1);
+    table.insert(dstn::make_ssharp_key(ssharp.data()).data(), 1);
     const auto table_words = table.build_gpu_buffer(true);
     VkBuffer table_buffer;
     void* table_map;
@@ -381,9 +381,9 @@ int main(int argc, char** argv) {
     // Pipeline.
     VkShaderModule modules[2];
     const auto vertex_code = read_spv(argv[1]);
-    // LEONIDA_PC_TAIL_UBO=1 (rdna2spirv.py --pc-tail-ubo): s0..s31 in 128 push-constant bytes; the heap base, if a
+    // DSTN_PC_TAIL_UBO=1 (rdna2spirv.py --pc-tail-ubo): s0..s31 in 128 push-constant bytes; the heap base, if a
     // stage reads it, in a uniform block at set 1 (vk_pc_tail.h).
-    const bool pc_tail = leonida::vk_test::pc_tail_requested();
+    const bool pc_tail = dstn::vk_test::pc_tail_requested();
     const std::uint32_t push_bytes = pc_tail ? 128u : 144u;
     bool tail_block = false;
     for (int stage = 0; stage < 2; ++stage) {
@@ -392,7 +392,7 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "cannot read %s\n", argv[1 + stage]);
             return 1;
         }
-        if (pc_tail && leonida::vk_test::spirv_declares_set(code.data(), code.size() * 4, leonida::vk_test::pc_tail_set))
+        if (pc_tail && dstn::vk_test::spirv_declares_set(code.data(), code.size() * 4, dstn::vk_test::pc_tail_set))
             tail_block = true;
         VkShaderModuleCreateInfo smi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
         smi.codeSize = code.size() * 4;
@@ -413,7 +413,7 @@ int main(int argc, char** argv) {
     pli.pSetLayouts = &dsl;
     pli.pushConstantRangeCount = 1;
     pli.pPushConstantRanges = &push;
-    leonida::vk_test::PcTail tail;
+    dstn::vk_test::PcTail tail;
     if (tail_block && !tail.create(vkGetDeviceProcAddr, dev, mp, props.limits.minUniformBufferOffsetAlignment,
                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 1)) {
         std::fprintf(stderr, "FAILED creating the --pc-tail-ubo block\n");
@@ -517,7 +517,7 @@ int main(int argc, char** argv) {
     if (tail_block) {
         tail.write(0, block, 4);
         const std::uint32_t offset = tail.offset(0);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, leonida::vk_test::pc_tail_set, 1,
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, dstn::vk_test::pc_tail_set, 1,
                                 &tail.set, 1, &offset);
     }
     vkCmdDraw(cmd, 3, 1, 0, 0);

@@ -4,7 +4,7 @@ r"""Build the PC port from your own copy of the game.
     python -I make_game.py                                      # same, from a terminal
     python -I make_game.py --find                               # list the copies found on this PC
     python -I make_game.py --pick                               # choose the game folder in a folder dialog
-    python -I make_game.py --game "D:\path\to\your\package" --out "D:\Games\Leonida"
+    python -I make_game.py --game "D:\path\to\your\package" --out "D:\Games\DSTN"
     python -I make_game.py --game "..." --check                 # only check the copy, build nothing
     python -I make_game.py --stages shaders,assets              # only some stages
 
@@ -24,7 +24,7 @@ Stages, in order (each skips work that is already done, so a stopped build conti
     assets    models (OBJ), texture dictionaries and texture pools (DDS), audio banks (AWC; --wav adds PCM WAV)
               BCPack uses strict decoding by default. For local calibration use <work>/bcpack-calibration.json.
     runtime   build the loader (needs the game's executable to run, not to build). On Linux it is cross-built with
-              clang-cl and an xwin SDK (docs/testing.md) and gta6rt.sh starts it with Wine; --runtime-build DIR
+              clang-cl and an xwin SDK (docs/testing.md) and dstnrt.sh starts it with Wine; --runtime-build DIR
               takes a Windows build of runtime/ instead (the runtime-windows artifact of the Runtime workflow)
     pipelines create every translated shader on your GPU's driver as a pipeline, report anything the driver
               rejects or that has to be skipped, and save the pipeline cache next to the port (the runtime doesn't
@@ -64,7 +64,7 @@ CROSS_TOOLS = ("clang-cl", "lld-link", "llvm-lib", "llvm-rc", "llvm-mt")
 CROSS_VARS = {"C_COMPILER": "clang-cl", "CXX_COMPILER": "clang-cl", "LINKER": "lld-link", "AR": "llvm-lib",
               "RC_COMPILER": "llvm-rc", "MT": "llvm-mt"}   # the toolchain's CMAKE_<var> defaults
 XWIN_DEFAULT = os.path.join("~", ".local", "share", "xwin-sdk")
-RUNTIME_FILES = ("gta6rt.exe", "gta6rt_tls_host.dll")
+RUNTIME_FILES = ("dstnrt.exe", "dstnrt_tls_host.dll")
 # Archives scanned for models and texture dictionaries, small to large.
 MODEL_ARCHIVES = [
     "common.rpf", "textures.rpf", "data.rpf",
@@ -137,7 +137,7 @@ def appdata_hint(cmd: str) -> str:
 
     `python` from the Python install manager (the app execution alias in WindowsApps) doesn't see folders that other
     programs create under %LOCALAPPDATA% or %APPDATA%; `py`, or the same python.exe started by its full path, does.
-    scripts\\build_llvm_mc.ps1 used to install llvm-mc.exe to %LOCALAPPDATA%\\Leonida\\llvm-mc."""
+    scripts\\build_llvm_mc.ps1 used to install llvm-mc.exe to %LOCALAPPDATA%\\DSTN\\llvm-mc."""
     if os.name != "nt":
         return ""
     path = ntpath.normcase(cmd.strip().strip('"'))
@@ -146,7 +146,7 @@ def appdata_hint(cmd: str) -> str:
         if base and path.startswith(ntpath.normcase(ntpath.join(base, ""))):
             return (f" LLVM_MC points into %{var}%, which `python` from the Python install manager can't see: copy "
                     "llvm-mc.exe out of AppData (scripts\\build_llvm_mc.ps1 now installs it to "
-                    "%USERPROFILE%\\.leonida\\llvm-mc), set LLVM_MC to the new path and reopen the terminal, or start "
+                    "%USERPROFILE%\\.dstn\\llvm-mc), set LLVM_MC to the new path and reopen the terminal, or start "
                     "make_game.py with `py`.")
     return ""
 
@@ -416,7 +416,7 @@ def pick_game() -> str:
                 log(f"chose {v['title']} {v['version']} in {d}")
                 return d
             notes = "".join(f"\n\n{container_message(p, h)}" for p, h in containers_in(d))
-            messagebox.showwarning("Leonida", "That folder isn't a supported version of the game. Choose the "
+            messagebox.showwarning("DSTN", "That folder isn't a supported version of the game. Choose the "
                                    "folder that holds MicrosoftGame.Config and the .rpf archives." + notes,
                                    parent=root)
     finally:
@@ -472,18 +472,18 @@ def icloud_documents() -> bool:
 
 
 def default_out() -> str:
-    """Documents/Leonida, except on a Mac whose Documents iCloud syncs: the port and its work folder (hundreds of
-    GB made from the game) must stay on this computer, so they go to ~/Leonida there."""
+    """Documents/DSTN, except on a Mac whose Documents iCloud syncs: the port and its work folder (hundreds of
+    GB made from the game) must stay on this computer, so they go to ~/DSTN there."""
     if icloud_documents():
-        return os.path.join(os.path.expanduser("~"), "Leonida")
-    return os.path.join(os.path.expanduser("~"), "Documents", "Leonida")
+        return os.path.join(os.path.expanduser("~"), "DSTN")
+    return os.path.join(os.path.expanduser("~"), "Documents", "DSTN")
 
 
 def icloud_default_notes() -> list:
     """The log lines when default_out() left iCloud-synced Documents: why, and where a build made before this change
     is, so its resumable work folder isn't silently left behind."""
-    notes = ["iCloud syncs Documents on this Mac: building into ~/Leonida instead, so the game's files stay off iCloud"]
-    earlier = os.path.join(os.path.expanduser("~"), "Documents", "Leonida")
+    notes = ["iCloud syncs Documents on this Mac: building into ~/DSTN instead, so the game's files stay off iCloud"]
+    earlier = os.path.join(os.path.expanduser("~"), "Documents", "DSTN")
     if os.path.isdir(earlier):
         notes.append(f"an earlier build is in {earlier}: move it to {default_out()} to resume it there, "
                      f'or pass --out "{earlier}" to keep using it')
@@ -1762,7 +1762,7 @@ def wine_launcher(out: str, work: str, image: str) -> str:
         relative = shlex.quote(os.path.relpath(shaders, out))
         moved_catalog = f"""    if [ "$here" != {shlex.quote(os.path.realpath(out))} ]; then
         shaders="$here"/{relative}
-        export LEONIDA_SHADERS="${{LEONIDA_SHADERS:-Z:$shaders}}"
+        export DSTN_SHADERS="${{DSTN_SHADERS:-Z:$shaders}}"
     fi
 """
     return f"""#!/bin/sh
@@ -1777,10 +1777,10 @@ if [ "$#" -eq 1 ] && {{ [ "$1" = --dry-run ] || [ "$1" = --init ] || [ "$1" = --
         exit 1
     fi
     # Wine maps the Unix filesystem root to Z:. The game reads from its package and writes to the port's overlay.
-{moved_catalog}    export LEONIDA_D3D12="${{LEONIDA_D3D12:-vulkan}}"
+{moved_catalog}    export DSTN_D3D12="${{DSTN_D3D12:-vulkan}}"
     set -- "$1" "./$image" --overlay "Z:$here/overlay"
 fi
-exec "${{WINE:-wine}}" "$here/gta6rt.exe" "$@"
+exec "${{WINE:-wine}}" "$here/dstnrt.exe" "$@"
 """
 
 
@@ -1814,7 +1814,7 @@ def cross_configure() -> str:
 def cross_build_runtime(jobs: int) -> str:
     log("runtime: cross-building with clang-cl and xwin")
     build = cross_configure()
-    cmake_build(build, ["gta6rt", "gta6rt_tls_host"], jobs,
+    cmake_build(build, ["dstnrt", "dstnrt_tls_host"], jobs,
                 "See the compiler output above; docs/testing.md has the cross-build's requirements.")
     return build
 
@@ -1865,9 +1865,9 @@ def runtime(game: str, out: str, v: dict, runtime_build: str | None = None, jobs
         finally:
             if os.path.exists(pending.name):
                 os.unlink(pending.name)
-    start = os.path.join(out, "gta6rt.exe")
+    start = os.path.join(out, "dstnrt.exe")
     if os.name != "nt":
-        start = os.path.join(out, "gta6rt.sh")
+        start = os.path.join(out, "dstnrt.sh")
         with open(start, "w", encoding="utf-8", newline="\n") as f:
             f.write(wine_launcher(out, work or os.path.join(out, "work"), v["expected_exe"]))
         os.chmod(start, os.stat(start).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -2108,7 +2108,7 @@ def main() -> int:
     ap.add_argument("--game", help="your package folder (found automatically if left out; a share path "
                                     "\\\\server\\share\\... goes here)")
     ap.add_argument("--pick", action="store_true", help="choose your package folder in a folder dialog")
-    ap.add_argument("--out", help="folder for the finished port (default Documents/Leonida; ~/Leonida on a Mac "
+    ap.add_argument("--out", help="folder for the finished port (default Documents/DSTN; ~/DSTN on a Mac "
                                   "whose Documents iCloud syncs)")
     ap.add_argument("--work", help="folder for intermediate files (hundreds of GB; default <out>/work)")
     ap.add_argument("--stages", help="comma list from: " + ",".join(STAGES))
@@ -2119,7 +2119,7 @@ def main() -> int:
     ap.add_argument("--jobs", type=positive_int, default=max(1, (os.cpu_count() or 2) // 2))
     ap.add_argument("--find", action="store_true", help="only list the game copies found on this PC")
     ap.add_argument("--runtime-build", metavar="DIR",
-                    help="a Windows build of runtime/ (gta6rt.exe and gta6rt_tls_host.dll) for the runtime stage "
+                    help="a Windows build of runtime/ (dstnrt.exe and dstnrt_tls_host.dll) for the runtime stage "
                          "instead of building it (off Windows: instead of the clang-cl + xwin cross-build); "
                          "on Windows, also use vk_pipeline_check.exe from DIR if present")
     ap.add_argument("--wave64-emulate", choices=WAVE64_MODES, default="auto",

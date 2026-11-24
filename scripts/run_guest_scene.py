@@ -6,7 +6,7 @@
 
 Each run renders offscreen in a fresh process and write overlay. Without --out the runs go to a temporary folder that is removed
 afterwards. The summary is printed first, and on failure the last run's log tails are printed too. Audio stays offline
-unless --play-audio sets LEONIDA_SCENE_AUDIO=winmm. The guest then plays the pulse synchronously with PlaySoundW.
+unless --play-audio sets DSTN_SCENE_AUDIO=winmm. The guest then plays the pulse synchronously with PlaySoundW.
 --negative-controls also runs a corrupted scene.bin and a corrupted checkpoint.bin, and each one must exit with 1.
 Exit code 0 means every check passed, 1 means a check failed and 2 means bad arguments.
 """
@@ -189,10 +189,10 @@ class Session:
         cmd = ([a.wine] if wine else []) + [str(a.loader), "--run", guest_path(a.guest, wine), "--game-dir",
                                             guest_path(package, wine), "--overlay", guest_path(overlay, wine),
                                             "--", guest_path(a.shaders, wine)]
-        env_set = {"LEONIDA_SCENE_MODE": mode,
-                   "LEONIDA_SCENE_AUDIO": "winmm" if a.play_audio else "offline",
-                   "LEONIDA_KEYBOARD_PAD": "always", "LEONIDA_GAMEINPUT_THREAD": "0", "LEONIDA_D3D12": "vulkan",
-                   "LEONIDA_SHADERS": guest_path(a.shaders / "spirv", wine), "LEONIDA_UNIMPLEMENTED": "stop"}
+        env_set = {"DSTN_SCENE_MODE": mode,
+                   "DSTN_SCENE_AUDIO": "winmm" if a.play_audio else "offline",
+                   "DSTN_KEYBOARD_PAD": "always", "DSTN_GAMEINPUT_THREAD": "0", "DSTN_D3D12": "vulkan",
+                   "DSTN_SHADERS": guest_path(a.shaders / "spirv", wine), "DSTN_UNIMPLEMENTED": "stop"}
         env = dict(os.environ, **env_set)
         self.last = [self.logs / f"{name}.stdout.log", self.logs / f"{name}.stderr.log"]
         start = time.monotonic()
@@ -310,7 +310,7 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--shaders", type=Path, required=True, help="shader root containing spirv/")
     ap.add_argument("--out", type=Path, help="new or empty folder (default: a temporary folder, removed afterwards)")
     ap.add_argument("--wine", help="run the loader through this Wine binary")
-    ap.add_argument("--play-audio", action="store_true", help="LEONIDA_SCENE_AUDIO=winmm instead of offline")
+    ap.add_argument("--play-audio", action="store_true", help="DSTN_SCENE_AUDIO=winmm instead of offline")
     ap.add_argument("--negative-controls", action="store_true", help="also run a bad scene.bin and checkpoint")
     args = ap.parse_args()
     for name in ("loader", "guest"):

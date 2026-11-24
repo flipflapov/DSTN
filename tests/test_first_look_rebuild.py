@@ -2,7 +2,7 @@
 
     python -I tests/test_first_look_rebuild.py
 
-A gta6rt.exe from before a pull still runs, but its dry run reports the old shim table: the day-one import to-do list
+A dstnrt.exe from before a pull still runs, but its dry run reports the old shim table: the day-one import to-do list
 would be wrong without any error. The script used to build the loader only when it was missing. No game files.
 """
 import os
@@ -25,16 +25,16 @@ PE_INSPECT_STUB = (
 # The build script leaves a marker; the loader is replaced by an alias that echoes its arguments.
 BUILD_STUB = r"""
 Set-Content -LiteralPath (Join-Path $PSScriptRoot 'built.txt') -Value 'built'
-if ($env:LEONIDA_TEST_INCOMPLETE_RUNTIME -ne '1') {
+if ($env:DSTN_TEST_INCOMPLETE_RUNTIME -ne '1') {
     $build = Join-Path (Split-Path $PSScriptRoot -Parent) 'runtime\build'
-    foreach ($name in 'gta6rt.exe', 'gta6rt_tls_host.dll') {
+    foreach ($name in 'dstnrt.exe', 'dstnrt_tls_host.dll') {
         New-Item -ItemType File -Path (Join-Path $build $name) -Force | Out-Null
     }
 }
 """
 RUN = r"""
 $ErrorActionPreference = 'Stop'
-Set-Alias -Name (Join-Path $PWD 'runtime\build\gta6rt.exe') -Value Write-Output
+Set-Alias -Name (Join-Path $PWD 'runtime\build\dstnrt.exe') -Value Write-Output
 & .\scripts\first_look.ps1 -Exe (Join-Path $PWD 'fixture.exe')
 """
 
@@ -50,9 +50,9 @@ class FirstLookRebuildTest(unittest.TestCase):
             (root / "scripts" / "build_runtime.ps1").write_text(BUILD_STUB, encoding="utf-8")
             (root / "tools" / "pe_inspect.py").write_text(PE_INSPECT_STUB, encoding="utf-8", newline="\n")
             (root / "fixture.exe").write_bytes(b"MZ")
-            loader = root / "runtime" / "build" / "gta6rt.exe"
+            loader = root / "runtime" / "build" / "dstnrt.exe"
             source = root / "runtime" / "src" / "pe_loader.cpp"
-            tls = loader.with_name("gta6rt_tls_host.dll")
+            tls = loader.with_name("dstnrt_tls_host.dll")
             loader.write_bytes(b"")
             tls.touch()
             source.write_text("// source\n", encoding="utf-8")
@@ -64,7 +64,7 @@ class FirstLookRebuildTest(unittest.TestCase):
                 loader.with_name(name).unlink()
             env = {k: v for k, v in os.environ.items() if k.upper() != "PSMODULEPATH"}
             env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env["PATH"]
-            env["LEONIDA_TEST_INCOMPLETE_RUNTIME"] = "1" if incomplete_build else "0"
+            env["DSTN_TEST_INCOMPLETE_RUNTIME"] = "1" if incomplete_build else "0"
             run = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
                                   "-Command", RUN], cwd=root, env=env, capture_output=True, text=True, timeout=60)
             dry_run = (root / "reports" / "exe" / "fixture" / "dryrun.txt").is_file()
@@ -84,7 +84,7 @@ class FirstLookRebuildTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
 
     def test_a_missing_runtime_file_is_rebuilt(self):
-        for name in ("gta6rt.exe", "gta6rt_tls_host.dll"):
+        for name in ("dstnrt.exe", "dstnrt_tls_host.dll"):
             with self.subTest(name=name):
                 built, dry_run, code, out = self.run_case(missing=(name,))
                 self.assertTrue(built, out)
@@ -92,12 +92,12 @@ class FirstLookRebuildTest(unittest.TestCase):
                 self.assertEqual(code, 0, out)
 
     def test_an_incomplete_build_stops_before_the_dry_run(self):
-        built, dry_run, code, out = self.run_case(missing=("gta6rt_tls_host.dll",), incomplete_build=True)
+        built, dry_run, code, out = self.run_case(missing=("dstnrt_tls_host.dll",), incomplete_build=True)
         self.assertTrue(built, out)
         self.assertFalse(dry_run, out)
         self.assertNotEqual(code, 0, out)
         self.assertIn("runtime build did not produce", out)
-        self.assertIn("gta6rt_tls_host.dll", out)
+        self.assertIn("dstnrt_tls_host.dll", out)
 
 
 if __name__ == "__main__":

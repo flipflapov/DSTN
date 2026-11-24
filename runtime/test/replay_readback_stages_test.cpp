@@ -32,7 +32,7 @@ void expect(bool ok, const char* what) {
 }  // namespace
 
 int main() {
-    using namespace leonida;
+    using namespace dstn;
 
     bool allow_depth24 = true;
     ReplayFunctions vk{};

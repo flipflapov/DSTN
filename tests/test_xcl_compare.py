@@ -2,7 +2,7 @@
 
     python -I tests/test_xcl_compare.py
 
-Nothing here starts XCL or gta6rt, and no game files are read. The run tests start a small Python script that
+Nothing here starts XCL or dstnrt, and no game files are read. The run tests start a small Python script that
 prints the test title's line format in place of a title.
 """
 import os
@@ -43,7 +43,7 @@ class ParseResult(unittest.TestCase):
 
 class Report(unittest.TestCase):
     def runs(self):
-        x, l = xc.Run("XCL"), xc.Run("Leonida")
+        x, l = xc.Run("XCL"), xc.Run("DSTN")
         for n in ("a", "b", "c"):
             x.set(n, status="PASS")
         l.set("a", status="PASS")
@@ -54,27 +54,27 @@ class Report(unittest.TestCase):
 
     def test_rows_follow_xcl_order_then_extra_checks(self):
         x, l = self.runs()
-        r = xc.make_report(x, l, list(x.order), "gta6rt.exe", ".")
+        r = xc.make_report(x, l, list(x.order), "dstnrt.exe", ".")
         self.assertEqual([row["check"] for row in r["checks"]], ["a", "b", "c", "d"])
 
     def test_counts_and_differences(self):
         x, l = self.runs()
-        r = xc.make_report(x, l, list(x.order), "gta6rt.exe", ".")
+        r = xc.make_report(x, l, list(x.order), "dstnrt.exe", ".")
         self.assertEqual(r["summary"]["xcl"]["PASS"], 3)
         self.assertEqual(r["summary"]["xcl"]["NOT RUN"], 1)
-        self.assertEqual(r["summary"]["leonida"], {"PASS": 1, "FAIL": 2, "SKIP": 0, "HANG": 1, "NOT RUN": 0})
+        self.assertEqual(r["summary"]["dstn"], {"PASS": 1, "FAIL": 2, "SKIP": 0, "HANG": 1, "NOT RUN": 0})
         self.assertEqual(r["differences"], 3)
         b = r["checks"][1]
-        self.assertEqual((b["leonida"], b["unimplemented"]), ("FAIL", ["kernelx.dll!XMemAlloc"]))
+        self.assertEqual((b["dstn"], b["unimplemented"]), ("FAIL", ["kernelx.dll!XMemAlloc"]))
         self.assertEqual(r["checks"][2]["stack"], ["main: XTaskQueueTerminate"])
 
     def test_same_status_different_reason_differs(self):
-        x, l = xc.Run("XCL"), xc.Run("Leonida")
+        x, l = xc.Run("XCL"), xc.Run("DSTN")
         x.set("a", status="FAIL", reason="E_NOTIMPL")
         l.set("a", status="FAIL", reason="null pointer")
         x.set("b", status="FAIL", reason="same")
         l.set("b", status="FAIL", reason="same")
-        r = xc.make_report(x, l, list(x.order), "gta6rt.exe", ".")
+        r = xc.make_report(x, l, list(x.order), "dstnrt.exe", ".")
         self.assertEqual([row["same"] for row in r["checks"]], [False, True])
         self.assertEqual(r["differences"], 1)
 

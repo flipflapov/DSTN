@@ -1,5 +1,5 @@
 // Link-time stand-in for the GDK's xgameruntime.dll, so tiny_game.exe gets real imports of these names. Under
-// `gta6rt --run` the shim registry answers them first and this DLL never loads; run directly, these failing answers
+// `dstnrt --run` the shim registry answers them first and this DLL never loads; run directly, these failing answers
 // are what tiny_game would see. Test code, not game content.
 #include <windows.h>
 

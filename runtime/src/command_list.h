@@ -18,7 +18,7 @@
 #include <variant>
 #include <vector>
 
-namespace leonida {
+namespace dstn {
 
 using ResourceId = std::uintptr_t;
 using ClearColor = std::array<float, 4>;
@@ -942,4 +942,4 @@ private:
     bool closed_ = false;
 };
 
-} // namespace leonida
+} // namespace dstn

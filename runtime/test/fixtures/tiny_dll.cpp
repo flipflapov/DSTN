@@ -9,7 +9,7 @@
 
 namespace {
 
-const char kTinyText[] = "leonida tiny fixture";
+const char kTinyText[] = "dstn tiny fixture";
 DWORD g_last_pid = 0;
 
 }  // namespace

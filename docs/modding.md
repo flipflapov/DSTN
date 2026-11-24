@@ -1,6 +1,6 @@
 # Mods
 
-**Status: the mod format, loader and hook are in place; only the lookup's address in the executable is missing.** `gta6rt` reads every
+**Status: the mod format, loader and hook are in place; only the lookup's address in the executable is missing.** `dstnrt` reads every
 `mods/<folder>/mod.json`, checks it and logs what it would change. A swap takes effect once the game's
 archetype lookup is hooked, and that needs the executable (RT-5): its address differs per version.
 
@@ -9,13 +9,13 @@ the game uses, and says what to swap. Everything stays on your own PC, like the 
 
 ## Where mods go
 
-`gta6rt` looks in a `mods` folder next to `gta6rt.exe` (the port's folder, `Documents\Leonida` by
+`dstnrt` looks in a `mods` folder next to `dstnrt.exe` (the port's folder, `Documents\DSTN` by
 default), or in the folder `--mods DIR` names. Each mod is a folder with a `mod.json`; a folder without
 one is ignored. Folders load in name order, and a later one wins when two swap the same model.
 
 ```text
-Documents\Leonida\
-  gta6rt.exe
+Documents\DSTN\
+  dstnrt.exe
   mods\
     mandy_prison_intro\
       mod.json
@@ -91,14 +91,14 @@ whole image has. Run it alone with `python -I tools/find_hash_lookup.py <exe>`. 
 Then pass it to the runtime:
 
 ```powershell
-gta6rt.exe --dry-run game_scarlett_master.exe --archetype-lookup 1A2B3C0
+dstnrt.exe --dry-run game_scarlett_master.exe --archetype-lookup 1A2B3C0
 ```
 
 `--archetype-lookup RVA[,ARG]` (hex RVA; `ARG` 0 when the hash is the first argument, 1 when it is the
 second, as in a member function) hooks the function right after the image is mapped, before any of its
 code runs (`runtime/src/code_hooks.h`). It does not patch the function: every direct `call` and `jmp`
 to it in the image's code is pointed at a thunk that passes the hash through
-`leonida::mods::active().remap()` and continues into the original with every other argument as it was.
+`dstn::mods::active().remap()` and continues into the original with every other argument as it was.
 The log line reports how many call sites were redirected, so a `--dry-run` with a candidate RVA shows at
 once whether it is the lookup (hundreds of callers) or not (a handful, or none). ctest `code_hooks` runs
 the thunk on small x64 functions in memory.
@@ -131,7 +131,7 @@ a camera. Whether the game exposes it to the player is not known.
 `camViewModeSettings` order: third person near, medium, far, cinematic, first person). All three are
 settings in `mod.json`, so a different answer changes the manifest, not the runtime.
 
-**Day one:** find the getter, then run `gta6rt --dry-run <exe> --view-mode-getter RVA` and check the log
+**Day one:** find the getter, then run `dstnrt --dry-run <exe> --view-mode-getter RVA` and check the log
 line's count of redirected calls. Leads: the code that reads the view-mode input (GTA V's
 `INPUT_NEXT_CAMERA`, an action hash), the switch over the five view-mode values that selects a camera
 metadata per mode, and the callers of the `UseFirstPersonCameraMatrix` check in the cloth code (they ask

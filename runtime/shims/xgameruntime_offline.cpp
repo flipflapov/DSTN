@@ -8,13 +8,13 @@
 // No GDK header or library code is used.
 //
 //   XGameEventImpl      XGameEventWrite (telemetry) succeeds and is dropped; the first event's name is logged, and
-//                       LEONIDA_LOG_GAME_EVENTS=1 logs every one.
+//                       DSTN_LOG_GAME_EVENTS=1 logs every one.
 //   XGameUiImpl         a message dialog or error dialog has no screen: its title and text go to the log and it
 //                       completes at once with the dialog's default button (error dialogs: dismissed). Every other UI
 //                       (profile cards, pickers, text entry, web authentication, invites) fails before starting.
 //   XGameStreamingImpl  the game is never streamed: initialising succeeds, IsStreaming is false, there are no
 //                       clients, the connection-state registration hands out a token that never fires.
-//   XDisplayImpl        XDisplayTryEnableHdrMode: Disabled (the host output is SDR), Enabled with LEONIDA_HDR=1.
+//   XDisplayImpl        XDisplayTryEnableHdrMode: Disabled (the host output is SDR), Enabled with DSTN_HDR=1.
 //   XUserDeviceImpl     every device belongs to the offline user; associations and audio endpoints never change; the
 //                       user has no audio endpoint of its own; finding a controller shows no UI (as on desktop).
 //
@@ -101,7 +101,7 @@ bool log_every_event() {
     static const bool on = [] {
         char value[4] = {};
         size_t length = 0;
-        return getenv_s(&length, value, "LEONIDA_LOG_GAME_EVENTS") == 0 && length == 2 && value[0] == '1';
+        return getenv_s(&length, value, "DSTN_LOG_GAME_EVENTS") == 0 && length == 2 && value[0] == '1';
     }();
     return on;
 }
@@ -117,7 +117,7 @@ HRESULT STDMETHODCALLTYPE event_write(void*, XUserHandle, const char*, const cha
                      measurements ? measurements : "");
     else if (n == 0)
         std::fprintf(stderr, "[rt] xgameruntime: game events are dropped offline (first: %s; "
-                             "LEONIDA_LOG_GAME_EVENTS=1 logs them)\n", name);
+                             "DSTN_LOG_GAME_EVENTS=1 logs them)\n", name);
     return S_OK;
 }
 
@@ -392,13 +392,13 @@ bool hdr_requested() {
     static const bool on = [] {
         char value[4] = {};
         size_t length = 0;
-        return getenv_s(&length, value, "LEONIDA_HDR") == 0 && length == 2 && value[0] == '1';
+        return getenv_s(&length, value, "DSTN_HDR") == 0 && length == 2 && value[0] == '1';
     }();
     return on;
 }
 
 // 4: XDisplayHdrModeResult XDisplayTryEnableHdrMode(XDisplayHdrModePreference preference, XDisplayHdrModeInfo* info)
-// The host swapchain is SDR, so HDR stays off unless LEONIDA_HDR=1; then it is "enabled" with the documented
+// The host swapchain is SDR, so HDR stays off unless DSTN_HDR=1; then it is "enabled" with the documented
 // defaults (0.01 / 1000 / 1000 nits).
 uint32_t STDMETHODCALLTYPE display_try_enable_hdr(void*, XDisplayHdrModePreference, XDisplayHdrModeInfo* info) {
     const bool on = hdr_requested();
@@ -406,7 +406,7 @@ uint32_t STDMETHODCALLTYPE display_try_enable_hdr(void*, XDisplayHdrModePreferen
     static std::atomic<bool> s_logged{false};
     if (!s_logged.exchange(true))
         std::fprintf(stderr, "[rt] xgameruntime: XDisplayTryEnableHdrMode: HDR %s\n",
-                     on ? "enabled (LEONIDA_HDR=1)" : "disabled (SDR output; LEONIDA_HDR=1 asks for HDR)");
+                     on ? "enabled (DSTN_HDR=1)" : "disabled (SDR output; DSTN_HDR=1 asks for HDR)");
     return static_cast<uint32_t>(on ? XDisplayHdrModeResult::Enabled : XDisplayHdrModeResult::Disabled);
 }
 

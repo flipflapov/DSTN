@@ -8,7 +8,7 @@
 #include <limits>
 #include <thread>
 
-using namespace leonida;
+using namespace dstn;
 
 #define EXPECT(condition) do { \
     if (!(condition)) { std::fprintf(stderr, "line %d: %s\n", __LINE__, #condition); return 1; } \

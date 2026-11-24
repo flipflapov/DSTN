@@ -6,7 +6,7 @@
 // with whether the call wrote its outputs (they start as a sentinel), and the two records must be the same. A
 // resource one device refuses to create is reported and its steps aren't compared. No shaders or game data. Skips
 // (77) without a Vulkan GPU or the standalone device; without a host D3D12 device only the layer's own record is
-// printed. Set LEONIDA_D3D49_VERBOSE=1 to print every value.
+// printed. Set DSTN_D3D49_VERBOSE=1 to print every value.
 #include "../shims/d3d12_com.h"
 
 #include <cstdint>
@@ -233,7 +233,7 @@ int main() {
         std::printf("heap properties: no Vulkan device, skipped\n");
         return 77;
     }
-    const bool verbose = GetEnvironmentVariableA("LEONIDA_D3D49_VERBOSE", nullptr, 0) > 0;
+    const bool verbose = GetEnvironmentVariableA("DSTN_D3D49_VERBOSE", nullptr, 0) > 0;
     Record ours;
     run(device.p, ours);
 

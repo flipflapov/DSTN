@@ -1,18 +1,18 @@
-// gta6rt: native runtime for the Xbox Series build.
+// dstnrt: native runtime for the Xbox Series build.
 //
-//   gta6rt --dry-run <image> [--game-dir DIR] [--overlay DIR]
+//   dstnrt --dry-run <image> [--game-dir DIR] [--overlay DIR]
 //       Maps the image and its bundled modules, applies relocations, binds every import, installs static TLS for
 //       this thread and prints a report. No code from the mapped images
-//       runs. TLS needs the runtime's own gta6rt_tls_host.dll, which reserves the module TLS index; system DLLs are
+//       runs. TLS needs the runtime's own dstnrt_tls_host.dll, which reserves the module TLS index; system DLLs are
 //       loaded to resolve host imports, as before.
 //
-//   gta6rt --init <image> [--game-dir DIR] [--overlay DIR]
+//   dstnrt --init <image> [--game-dir DIR] [--overlay DIR]
 //       The same mapping, then each loaded DLL's TLS callbacks and DllMain(DLL_PROCESS_ATTACH) are run.
 //
-//   gta6rt --run <exe> [--game-dir DIR] [--overlay DIR] [--trace-d3d12] [--trace FILE] [-- game arguments...]
+//   dstnrt --run <exe> [--game-dir DIR] [--overlay DIR] [--trace-d3d12] [--trace FILE] [-- game arguments...]
 //       The same, then the EXE's own TLS callbacks and its entry point, on a game thread. The game's argv and
 //       command line are <exe name> plus the arguments after "--"; exit/ExitProcess from the game end the run
-//       (shims/process.cpp). gta6rt prints the binding report first and returns the game's exit code.
+//       (shims/process.cpp). dstnrt prints the binding report first and returns the game's exit code.
 //
 // --game-dir is also where a title's GAME: paths read from; anything it writes or deletes goes to the overlay
 // (--overlay, default <game-dir>/overlay) so the package is never modified (shims/file_system.cpp).
@@ -49,9 +49,9 @@ const char* binding_name(rt::Binding b) {
 
 int usage() {
     std::fprintf(stderr,
-                 "usage: gta6rt --dry-run <image> [--game-dir DIR] [--overlay DIR] [--mods DIR] [--archetype-lookup RVA[,ARG]] [--view-mode-getter RVA] [--trace FILE]\n"
-                 "       gta6rt --init <image> [--game-dir DIR] [--overlay DIR] [--mods DIR] [--archetype-lookup RVA[,ARG]] [--view-mode-getter RVA] [--trace-d3d12] [--trace FILE]\n"
-                 "       gta6rt --run <exe> [--game-dir DIR] [--overlay DIR] [--mods DIR] [--archetype-lookup RVA[,ARG]] [--view-mode-getter RVA] [--trace-d3d12] [--trace FILE] [-- game arguments...]\n");
+                 "usage: dstnrt --dry-run <image> [--game-dir DIR] [--overlay DIR] [--mods DIR] [--archetype-lookup RVA[,ARG]] [--view-mode-getter RVA] [--trace FILE]\n"
+                 "       dstnrt --init <image> [--game-dir DIR] [--overlay DIR] [--mods DIR] [--archetype-lookup RVA[,ARG]] [--view-mode-getter RVA] [--trace-d3d12] [--trace FILE]\n"
+                 "       dstnrt --run <exe> [--game-dir DIR] [--overlay DIR] [--mods DIR] [--archetype-lookup RVA[,ARG]] [--view-mode-getter RVA] [--trace-d3d12] [--trace FILE] [-- game arguments...]\n");
     return 2;
 }
 
@@ -100,7 +100,7 @@ int wmain(int argc, wchar_t** argv) {
     if (image.empty()) return usage();
     // Exactly one mode: --dry-run --run would otherwise initialise the modules and call the entry point.
     if (dry_run + init + run != 1) return usage();
-    // The console folders are fixed once, as absolute paths. A bare image name (`gta6rt --run game.exe` from the
+    // The console folders are fixed once, as absolute paths. A bare image name (`dstnrt --run game.exe` from the
     // game folder) has an empty parent path, which left GAME: with no root; and a relative --game-dir or --overlay
     // would follow the title's later SetCurrentDirectory. If absolute() fails the path stays as given.
     const auto absolute_or_same = [](const std::filesystem::path& p) {
@@ -117,7 +117,7 @@ int wmain(int argc, wchar_t** argv) {
     // GAME: paths read under --game-dir; whatever a title writes lands in the overlay, never in the package.
     if (overlay_dir.empty()) overlay_dir = game_dir / "overlay";
     rt::fs::configure(game_dir, overlay_dir);
-    // Mods (docs/modding.md): <folder of gta6rt.exe>\mods unless --mods names another. Loaded and reported here;
+    // Mods (docs/modding.md): <folder of dstnrt.exe>\mods unless --mods names another. Loaded and reported here;
     // the archetype swaps take effect once the game's archetype lookup is hooked for this executable version.
     if (mods_dir.empty()) {
         std::wstring self(32768, L'\0');
@@ -125,7 +125,7 @@ int wmain(int argc, wchar_t** argv) {
         if (n && n < self.size()) mods_dir = std::filesystem::path(self.substr(0, n)).parent_path() / L"mods";
     }
     {
-        const leonida::mods::LoadResult mods = leonida::mods::load_mods(mods_dir);
+        const dstn::mods::LoadResult mods = dstn::mods::load_mods(mods_dir);
         for (const std::string& e : mods.errors) std::fprintf(stderr, "[rt] mods: skipped %s\n", e.c_str());
         for (const auto& m : mods.mods) {
             std::fprintf(stderr, "[rt] mods: %s%s\n", m.name.c_str(), m.enabled ? "" : " (disabled)");
@@ -133,17 +133,17 @@ int wmain(int argc, wchar_t** argv) {
                 std::fprintf(stderr, "[rt] mods:   archetype %s (0x%08X) -> %s (0x%08X)\n", sw.from_name.c_str(),
                              sw.from, sw.to_name.c_str(), sw.to);
         }
-        leonida::mods::set_active(leonida::mods::ArchetypeSwaps(mods.mods));
-        const leonida::mods::CameraView camera = leonida::mods::camera_of(mods.mods);
-        leonida::mods::set_active_camera(camera);
+        dstn::mods::set_active(dstn::mods::ArchetypeSwaps(mods.mods));
+        const dstn::mods::CameraView camera = dstn::mods::camera_of(mods.mods);
+        dstn::mods::set_active_camera(camera);
         if (camera.first_person)
             std::fprintf(stderr, "[rt] mods: first-person view (value %u) for %s%s\n", camera.first_person_value,
                          camera.contexts.empty() ? "every context" : "the listed contexts",
                          view_mode_getter_rva ? "" : "; not applied: no --view-mode-getter RVA for this executable");
-        if (leonida::mods::active().size())
+        if (dstn::mods::active().size())
             std::fprintf(stderr, archetype_lookup_rva ? "[rt] mods: %zu archetype swap(s) loaded\n"
                                  : "[rt] mods: %zu archetype swap(s) loaded; not applied: no --archetype-lookup RVA for "
-                                   "this executable (docs/modding.md)\n", leonida::mods::active().size());
+                                   "this executable (docs/modding.md)\n", dstn::mods::active().size());
     }
     rt::d3d12_trace::set_enabled(trace_d3d12);
     if (int trace_error = 0; !trace_file.empty() && !rt::startup_trace::open(trace_file.c_str(), &trace_error)) {
@@ -158,8 +158,8 @@ int wmain(int argc, wchar_t** argv) {
         // The mods' archetype swaps (docs/modding.md): hooked here, before any image code runs, when the lookup's RVA
         // for this executable is given. The count of redirected calls shows whether the RVA is the real lookup.
         if (view_mode_getter_rva) {
-            const auto r = leonida::hooks::hook_image_results(main_module.base, view_mode_getter_rva,
-                                                              &leonida::mods::override_view_mode);
+            const auto r = dstn::hooks::hook_image_results(main_module.base, view_mode_getter_rva,
+                                                              &dstn::mods::override_view_mode);
             if (r.ok)
                 std::fprintf(stderr, "[rt] mods: view-mode getter at RVA 0x%X hooked: %zu direct call(s) redirected\n",
                              view_mode_getter_rva, r.redirected);
@@ -168,9 +168,9 @@ int wmain(int argc, wchar_t** argv) {
                              r.error);
         }
         if (archetype_lookup_rva) {
-            const auto r = leonida::hooks::hook_image_calls(
+            const auto r = dstn::hooks::hook_image_calls(
                 main_module.base, archetype_lookup_rva,
-                [](uint32_t hash) { return leonida::mods::active().remap(hash); }, archetype_lookup_arg);
+                [](uint32_t hash) { return dstn::mods::active().remap(hash); }, archetype_lookup_arg);
             if (r.ok)
                 std::fprintf(stderr, "[rt] mods: archetype lookup at RVA 0x%X hooked (argument %d): %zu direct "
                                      "call(s) redirected\n", archetype_lookup_rva, archetype_lookup_arg, r.redirected);
@@ -238,7 +238,7 @@ int wmain(int argc, wchar_t** argv) {
         rt::startup_trace::event("exit", "\"code\":" + std::to_string(code));
         std::fflush(stdout);
         std::fflush(stderr);
-        // Not `return`: a normal host exit runs the CRT's atexit table, which the game shares with gta6rt (its
+        // Not `return`: a normal host exit runs the CRT's atexit table, which the game shares with dstnrt (its
         // handlers would run against a game that has stopped) and whose last word decides the exit status.
         // ExitProcess also skips atexit, so the TLS clone cleanup registered there is run here instead.
         rt::cleanup_tls_clones();

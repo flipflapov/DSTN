@@ -1,7 +1,7 @@
 // Shared setup for the GPU tests of the D3D12 layer: a Vulkan 1.3 device (or 1.2 with VK_KHR_dynamic_rendering and
 // VK_KHR_synchronization2) with dynamicRendering, synchronization2, timelineSemaphore and
 // separateDepthStencilLayouts, images, buffers and one-shot submissions.
-// Set LEONIDA_VK_VALIDATION=1 to run under VK_LAYER_KHRONOS_validation; Device::validation_errors() counts errors.
+// Set DSTN_VK_VALIDATION=1 to run under VK_LAYER_KHRONOS_validation; Device::validation_errors() counts errors.
 #pragma once
 
 #include "vulkan_loader.h"
@@ -118,7 +118,7 @@ public:
     bool conservative_rasterization = false; // VK_EXT_conservative_rasterization enabled where available
     bool debug_utils = false;          // VK_EXT_debug_utils is enabled on the instance
     // The subgroup sizes of the device, with subgroupSizeControl and computeFullSubgroups enabled where it has them.
-    leonida::SubgroupSizeCaps subgroup;
+    dstn::SubgroupSizeCaps subgroup;
     bool custom_border_color = false;  // VK_EXT_custom_border_color and customBorderColors enabled
     bool custom_border_color_without_format = false;
 
@@ -154,7 +154,7 @@ public:
     // A Vulkan 1.3 function falls back to its KHR name on a 1.2 device.
     template<typename F>
     F fn(const char* name) const {
-        return reinterpret_cast<F>(leonida::device_proc_or_khr(device_proc, device, name));
+        return reinterpret_cast<F>(dstn::device_proc_or_khr(device_proc, device, name));
     }
 
     template<typename F>
@@ -183,7 +183,7 @@ public:
 #pragma warning(push)
 #pragma warning(disable : 4996)  // getenv: read once, at startup
 #endif
-        const char* env = std::getenv("LEONIDA_VK_VALIDATION");
+        const char* env = std::getenv("DSTN_VK_VALIDATION");
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
@@ -241,7 +241,7 @@ public:
             bool found = false;
             for (const auto& properties : layers) found = found || std::strcmp(properties.layerName, layer) == 0;
             if (!found) {
-                std::fprintf(stderr, "LEONIDA_VK_VALIDATION is set but %s is not installed\n", layer);
+                std::fprintf(stderr, "DSTN_VK_VALIDATION is set but %s is not installed\n", layer);
                 return DeviceStatus::failed;
             }
             instance_info.pNext = &validation_features;
@@ -287,11 +287,11 @@ public:
         const auto features2_of = instance_fn<PFN_vkGetPhysicalDeviceFeatures2>("vkGetPhysicalDeviceFeatures2");
         const auto device_extensions_of =
             instance_fn<PFN_vkEnumerateDeviceExtensionProperties>("vkEnumerateDeviceExtensionProperties");
-        leonida::Vulkan13Features candidate13;
+        dstn::Vulkan13Features candidate13;
         for (auto candidate : devices) {
             VkPhysicalDeviceProperties props{};
             properties_of(candidate, &props);
-            if (!leonida::vulkan_device_wanted(props.deviceName)) continue;
+            if (!dstn::vulkan_device_wanted(props.deviceName)) continue;
             candidate13.query(candidate, props.apiVersion, features2_of, device_extensions_of);
             if (!candidate13.usable()) continue;
             std::uint32_t family_count = 0;
@@ -300,7 +300,7 @@ public:
             families_of(candidate, &family_count, candidate_families.data());
             for (std::uint32_t i = 0; i < family_count; ++i) {
                 if (!(candidate_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)) continue;
-                if (const int rank = leonida::vk_test::device_rank(props.deviceType, props.vendorID);
+                if (const int rank = dstn::vk_test::device_rank(props.deviceType, props.vendorID);
                     rank > best_rank) {
                     physical = candidate;
                     family = i;
@@ -313,10 +313,10 @@ public:
             }
         }
         if (!physical) {
-            if (const std::string filter = leonida::vulkan_device_filter(); !filter.empty()) {
+            if (const std::string filter = dstn::vulkan_device_filter(); !filter.empty()) {
                 // A filter that matches nothing fails the test instead of skipping it.
                 std::fprintf(stderr,
-                             "LEONIDA_VK_DEVICE=%s: no Vulkan 1.3 device (or 1.2 with VK_KHR_dynamic_rendering and "
+                             "DSTN_VK_DEVICE=%s: no Vulkan 1.3 device (or 1.2 with VK_KHR_dynamic_rendering and "
                              "VK_KHR_synchronization2) with a graphics queue matches\n",
                              filter.c_str());
                 return DeviceStatus::failed;
@@ -359,7 +359,7 @@ public:
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT};
         enable_conditional.conditionalRendering = VK_TRUE;
 
-        leonida::query_subgroup_size_caps(instance_fn<PFN_vkGetPhysicalDeviceProperties2>("vkGetPhysicalDeviceProperties2"),
+        dstn::query_subgroup_size_caps(instance_fn<PFN_vkGetPhysicalDeviceProperties2>("vkGetPhysicalDeviceProperties2"),
                                           physical, v13_.subgroup_size_control, v13_.compute_full_subgroups,
                                           subgroup);
         std::printf("subgroup sizes: %u..%u (default %u), requirable in stages 0x%x, subgroupSizeControl %s, "
@@ -406,7 +406,7 @@ public:
         }
         compute_family = copy_family = family;
         if (all_queue_types) {
-            const auto picked = leonida::pick_queue_families(families, family);
+            const auto picked = dstn::pick_queue_families(families, family);
             compute_family = picked.compute;
             copy_family = picked.copy;
         }
@@ -748,7 +748,7 @@ private:
     VkDebugUtilsMessengerEXT messenger_ = VK_NULL_HANDLE;
     VkCommandPool pool_ = VK_NULL_HANDLE;
     VkPhysicalDeviceMemoryProperties memory_{};
-    leonida::Vulkan13Features v13_;  // the chosen device's dynamicRendering/synchronization2 path
+    dstn::Vulkan13Features v13_;  // the chosen device's dynamicRendering/synchronization2 path
     std::vector<std::pair<VkImage, VkDeviceMemory>> images_;
     std::vector<std::pair<VkBuffer, VkDeviceMemory>> buffers_;
 };

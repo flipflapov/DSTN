@@ -1,4 +1,4 @@
-# Leonida — Guide de démarrage (`fr`)
+# DSTN — Guide de démarrage (`fr`)
 
 > [!NOTE]
 > La documentation en anglais ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) et
@@ -6,9 +6,9 @@
 > et de compilation (synchronisé avec le commit `aa2988cc`). Pour l'état d'avancement du projet, qui change tous les
 > jours, consultez le [`README.md`](../../../README.md).
 
-## Ce qu'est Leonida
+## Ce qu'est DSTN
 
-Leonida est un projet de recompilation statique de Grand Theft Auto VI (version Xbox Series) pour le faire tourner
+DSTN est un projet de recompilation statique de Grand Theft Auto VI (version Xbox Series) pour le faire tourner
 nativement sous Windows. Il se construit **sur votre PC, à partir de votre propre copie du jeu**. Les shaders RDNA2 de
 la console sont traduits en SPIR-V (Vulkan), les ressources sont lues directement dans votre paquet et le logiciel
 système de la console est réimplémenté sous forme de shims.
@@ -26,7 +26,7 @@ Le projet en est à ses débuts : **le jeu ne démarre pas encore**.
 
 Rien n'est jouable, sur aucune plateforme. Ce qui tourne aujourd'hui :
 
-- **Windows** : tout (`make_game.py`, les outils, et le runtime `gta6rt` avec la couche D3D12 → Vulkan et ses tests).
+- **Windows** : tout (`make_game.py`, les outils, et le runtime `dstnrt` avec la couche D3D12 → Vulkan et ses tests).
 - **Linux** : le traducteur, les outils de ressources et les outils de test GPU Vulkan tournent nativement (testés
   sur RADV et NVIDIA). Le runtime est du code Windows : il se compile en croisé avec clang-cl et xwin, et ses tests
   tournent sous Wine ou Proton. Le jeu est prévu pour tourner de la même façon (#217).
@@ -91,15 +91,15 @@ niveaux de dossiers. Il reconnaît la version à la taille de quelques fichiers,
 trouve plusieurs copies, il demande
 laquelle utiliser ; s'il n'en trouve aucune, il vous demande de coller le chemin du dossier. Avant de commencer, il
 vérifie les prérequis et l'espace libre, et liste d'un coup tout ce qui manque. Le résultat va dans
-`Documents\Leonida`. Une compilation interrompue reprend là où elle s'était arrêtée.
+`Documents\DSTN`. Une compilation interrompue reprend là où elle s'était arrêtée.
 
 ### Peu d'espace disque
 
 L'espace indiqué plus haut correspond à la compilation complète. Pour *lancer* le portage,
 `--stages check,shaders,runtime` a besoin d'environ 30 Go ; l'étape `assets`, qui prend presque tout le reste, ne sert
 qu'aux outils de ressources, et `--wav` ajoute plusieurs fois la taille de l'Ogg Opus. `--work` et `--out` peuvent être sur un autre disque. Le runtime lit le paquet sur
-place : si son disque est en lecture seule, passez `gta6rt --overlay <dossier accessible en écriture>` (c'est une
-option de `gta6rt`, pas de `make_game.py`). Ne supprimez pas les fichiers `.s` de `work/shaders/dxbc/disasm` : sans
+place : si son disque est en lecture seule, passez `dstnrt --overlay <dossier accessible en écriture>` (c'est une
+option de `dstnrt`, pas de `make_game.py`). Ne supprimez pas les fichiers `.s` de `work/shaders/dxbc/disasm` : sans
 eux et sans `work/shaders/spirv/index.json`, l'étape `shaders` peut sembler terminée avec zéro shader.
 
 ### Depuis un terminal (`make_game.py`)
@@ -109,7 +109,7 @@ python -I make_game.py --find                          # liste les copies trouv�
 python -I make_game.py --pick                          # ouvre une fenêtre pour choisir le dossier du jeu
 python -I make_game.py --check                         # vérifie votre copie, sans rien compiler
 python -I make_game.py --check --full-check            # vérifie aussi le SHA-256 de chaque fichier (lent)
-python -I make_game.py --game "D:\chemin\vers\le\paquet" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\chemin\vers\le\paquet" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages shaders,assets         # seulement certaines étapes
 python -I make_game.py --game "D:\chemin\vers\le\paquet" --wav  # décode aussi l'Opus en WAV PCM (volumineux)
 python -I make_game.py --wave64-emulate off            # auto (par défaut), on ou off
@@ -141,9 +141,9 @@ encore ce cache.
   chargeur est un programme Windows et tourne sous Wine ou Proton : l'étape `runtime` le compile en croisé avec
   clang-cl et lld-link (LLVM 19+, sauf 22.1.7 et 22.1.8) et le SDK Windows préparé par
   [xwin](https://github.com/Jake-Shadle/xwin) ; voir [`docs/testing.md`](../../testing.md). Vous pouvez aussi passer
-  `--runtime-build <dossier>` avec une compilation Windows faite ailleurs (`gta6rt.exe` et `gta6rt_tls_host.dll`) :
-  dans les deux cas, le script écrit `gta6rt.sh`, qui lance
-  `gta6rt.exe` avec `wine`, ou avec le Wine désigné par la variable `WINE` (pour Proton, son `files/bin/wine`).
+  `--runtime-build <dossier>` avec une compilation Windows faite ailleurs (`dstnrt.exe` et `dstnrt_tls_host.dll`) :
+  dans les deux cas, le script écrit `dstnrt.sh`, qui lance
+  `dstnrt.exe` avec `wine`, ou avec le Wine désigné par la variable `WINE` (pour Proton, son `files/bin/wine`).
 
 ## Problèmes courants
 
@@ -156,7 +156,7 @@ encore ce cache.
   membre de `D3D12_VERSIONED_ROOT_SIGNATURE_DESC` : mettez à jour le SDK Windows en `10.0.26100` ou plus récent, par
   le Visual Studio Installer ou avec `winget install Microsoft.WindowsSDK.10.0.26100`, puis supprimez
   `runtime/build` et relancez la configuration.
-- **Plus de place sur `C:`** : passez `--work "D:\leonida-work"` pour placer les fichiers temporaires sur un autre
+- **Plus de place sur `C:`** : passez `--work "D:\dstn-work"` pour placer les fichiers temporaires sur un autre
   disque.
 - **Windows refuse de lancer les programmes de test tout juste compilés** (« An Application Control policy has
   blocked this file ») : c'est le Contrôle intelligent des applications de Windows 11. Voir

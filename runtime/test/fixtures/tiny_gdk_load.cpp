@@ -1,7 +1,7 @@
 // A mapped program that reaches the GDK runtime the way xgameruntime.lib's thunks do: it has no import of
 // xgameruntime.dll, loads it with LoadLibraryW and looks the five run-time entry points up with GetProcAddress
 // (measured in the package's libHttpClient.GDK.dll and XCurl.dll, docs/runtime_imports.md "Run-time loaded
-// modules"). Run under `gta6rt --run`, its own kernel32 imports are bound by the loader, so LoadLibraryW and
+// modules"). Run under `dstnrt --run`, its own kernel32 imports are bound by the loader, so LoadLibraryW and
 // GetProcAddress must reach runtime/shims/library_loader.cpp and the offline xgameruntime shim. Run on its own,
 // LoadLibraryW goes to Windows and either fails or loads the PC's Gaming Services runtime, and this never prints
 // PASS. Ordinary test code; no game data.
@@ -45,7 +45,7 @@ int main() {
         if (!process_id || process_id() != GetCurrentProcessId())
             return fail("unshimmed host export", GetLastError());
         SetLastError(0);
-        if (GetProcAddress(host, "LeonidaNoSuchHostExport") || GetLastError() != ERROR_PROC_NOT_FOUND)
+        if (GetProcAddress(host, "DSTNNoSuchHostExport") || GetLastError() != ERROR_PROC_NOT_FOUND)
             return fail("missing host export", GetLastError());
         auto create_file = reinterpret_cast<decltype(&CreateFileW)>(GetProcAddress(host, "CreateFileW"));
         if (!create_file) return fail("dynamic CreateFileW", GetLastError());

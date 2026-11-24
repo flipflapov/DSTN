@@ -11,7 +11,7 @@ Eight AMD Radeon Pro V540 cards, Navi 12 / gfx1011 (RDNA1, PCI `1002:7360`, subs
 `113-D3020100-103`), on bare metal (no VM passthrough), each bound to `amdgpu` and reachable through a render node.
 RADV Mesa 25.2.8, Vulkan device 1.4.318, loader 1.3.275, subgroup range 32..64. Ubuntu 24.04.4, kernel
 7.0.0-31-generic, GCC 13.3.0, Python 3.12.3, CMake 3.28.3, llvm-mc 21.1.8 with the AMDGPU target, SPIRV-Tools
-2026.1 (2025.1 is too old for the `FMAKHR` capability used by `LEONIDA_FMA=khr`).
+2026.1 (2025.1 is too old for the `FMAKHR` capability used by `DSTN_FMA=khr`).
 
 | PCI BDF | Render node | Shard label |
 |---|---|---|

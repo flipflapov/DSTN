@@ -19,9 +19,9 @@
 //   VKC_SGPRS=w4,w5,... (env): set s4, s5, ... (decimal or 0x hex, up to s31), the user SGPRs after the output V#,
 //   so a test can take input words (cs_user_sgprs.asm). They are zero otherwise. Same syntax as vk_harness's VKH_SGPRS.
 // Contract (docs/design.md): push constants = s0..s31 (128 bytes), heap base lo/hi, code base lo/hi (144 bytes).
-// LEONIDA_PC_TAIL_UBO=1 (modules from rdna2spirv.py --pc-tail-ubo): s0..s31 only, the rest at set 1 (vk_pc_tail.h).
+// DSTN_PC_TAIL_UBO=1 (modules from rdna2spirv.py --pc-tail-ubo): s0..s31 only, the rest at set 1 (vk_pc_tail.h).
 // The output buffer is the "heap": Xbox VA 0 maps to its device address, and s[0:3] hold a V# with base 0.
-// LEONIDA_VK_VALIDATION=1 (env): run under VK_LAYER_KHRONOS_validation; a validation error fails the run (exit 1),
+// DSTN_VK_VALIDATION=1 (env): run under VK_LAYER_KHRONOS_validation; a validation error fails the run (exit 1),
 // so scripts/run_gpu_tests.py reports it. The layer's own variables still apply, for example
 // VK_KHRONOS_VALIDATION_GPUAV_ENABLE=1 for GPU-assisted validation of what the translated shader does.
 #include "vulkan_loader.h"
@@ -210,7 +210,7 @@ static int run(int argc, char** argv) {
     app.apiVersion = VK_API_VERSION_1_3;
     VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
     ici.pApplicationInfo = &app;
-    leonida::vk_test::OptInValidation validation;   // LEONIDA_VK_VALIDATION
+    dstn::vk_test::OptInValidation validation;   // DSTN_VK_VALIDATION
     if (!validation.prepare(gipa, ici)) return 1;
     CHECK(vkCreateInstance(&ici, nullptr, &inst));
     CHECK(validation.attach(gipa, inst));
@@ -224,10 +224,10 @@ static int run(int argc, char** argv) {
     vkEnumeratePhysicalDevices(inst, &n, pds.data());
     std::vector<VkPhysicalDeviceProperties> candidates(pds.size());
     for (std::size_t i = 0; i < pds.size(); ++i) vkGetPhysicalDeviceProperties(pds[i], &candidates[i]);
-    const std::size_t chosen = leonida::vk_test::pick_device(candidates);
+    const std::size_t chosen = dstn::vk_test::pick_device(candidates);
     VkPhysicalDevice pd = chosen < pds.size() ? pds[chosen] : VK_NULL_HANDLE;
     if (!pd) {
-        leonida::vk_test::report_no_device();
+        dstn::vk_test::report_no_device();
         return 1;
     }
     VkPhysicalDeviceProperties props; vkGetPhysicalDeviceProperties(pd, &props);
@@ -267,7 +267,7 @@ static int run(int argc, char** argv) {
         std::fprintf(stderr, "full 64-wide compute subgroups unavailable\n");
         return 77;
     }
-    const bool needs_float64 = leonida::vk_test::spirv_declares_capability(code.data(), code.size(), 10);  // Float64
+    const bool needs_float64 = dstn::vk_test::spirv_declares_capability(code.data(), code.size(), 10);  // Float64
     if (needs_float64 && !f2q.features.shaderFloat64) {
         std::fprintf(stderr, "unsupported: %s uses Float64 and the device has no shaderFloat64\n", argv[1]);
         return 77;
@@ -299,7 +299,7 @@ static int run(int argc, char** argv) {
     f2.features.shaderFloat64 = needs_float64;
     f2.pNext = &f12;
     // OpFmaKHR (rdna2spirv.py --fma khr): VK_KHR_shader_fma, when the device has it.
-    leonida::vk_test::ShaderFma fma;
+    dstn::vk_test::ShaderFma fma;
     fma.query(gipa, inst, pd);
     fma.link_after(&f2);
     const char* fma_extension = fma.extension();
@@ -385,14 +385,14 @@ static int run(int argc, char** argv) {
     VkShaderModuleCreateInfo smi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     smi.codeSize = code.size(); smi.pCode = reinterpret_cast<const uint32_t*>(code.data());
     VkShaderModule sm; CHECK(vkCreateShaderModule(dev, &smi, nullptr, &sm));
-    // 144 push-constant bytes: s0..s31, heap base, code base. With LEONIDA_PC_TAIL_UBO=1 (rdna2spirv.py
+    // 144 push-constant bytes: s0..s31, heap base, code base. With DSTN_PC_TAIL_UBO=1 (rdna2spirv.py
     // --pc-tail-ubo) only s0..s31; the tail, if the module reads it, is a uniform block at set 1 (vk_pc_tail.h), one
     // slot for the dispatch and one per workgroup_yz origin.
-    const bool pc_tail = leonida::vk_test::pc_tail_requested();
+    const bool pc_tail = dstn::vk_test::pc_tail_requested();
     const uint32_t pc_bytes = pc_tail ? 128u : 144u;
-    leonida::vk_test::PcTail tail;
+    dstn::vk_test::PcTail tail;
     const bool tail_block = pc_tail &&
-        leonida::vk_test::spirv_declares_set(code.data(), code.size(), leonida::vk_test::pc_tail_set);
+        dstn::vk_test::spirv_declares_set(code.data(), code.size(), dstn::vk_test::pc_tail_set);
     if (tail_block && !tail.create(vkGetDeviceProcAddr, dev, mp, props.limits.minUniformBufferOffsetAlignment,
                                    VK_SHADER_STAGE_COMPUTE_BIT, 1 + origins)) {
         std::fprintf(stderr, "FAILED creating the --pc-tail-ubo block\n");
@@ -450,8 +450,8 @@ static int run(int argc, char** argv) {
         pbai.buffer = pbuf;
         const uint64_t paddr = vkGetBufferDeviceAddress(dev, &pbai);
         VkShaderModuleCreateInfo psmi{VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-        psmi.codeSize = sizeof(leonida::vk_test::cs_wave_probe_spirv);
-        psmi.pCode = leonida::vk_test::cs_wave_probe_spirv;
+        psmi.codeSize = sizeof(dstn::vk_test::cs_wave_probe_spirv);
+        psmi.pCode = dstn::vk_test::cs_wave_probe_spirv;
         VkShaderModule psm; CHECK(vkCreateShaderModule(dev, &psmi, nullptr, &psm));
         const VkSpecializationMapEntry entries[3] = {{0, 0, 4}, {1, 4, 4}, {2, 8, 4}};
         const VkSpecializationInfo spec{3, entries, sizeof(local), local};
@@ -530,7 +530,7 @@ static int run(int argc, char** argv) {
         if (!tail_block) return;
         tail.write(slot, pc, 4);
         const uint32_t offset = tail.offset(slot);
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pl, leonida::vk_test::pc_tail_set, 1, &tail.set,
+        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pl, dstn::vk_test::pc_tail_set, 1, &tail.set,
                                 1, &offset);
     };
     bind_tail(0);
@@ -655,5 +655,5 @@ static int run(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     // GPU-assisted validation reports what the shader did when the queue finishes, after the words were judged.
-    return leonida::vk_test::OptInValidation::exit_status(run(argc, argv));
+    return dstn::vk_test::OptInValidation::exit_status(run(argc, argv));
 }

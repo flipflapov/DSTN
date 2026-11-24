@@ -1,6 +1,6 @@
 # Runtime: measured imports of the shipped modules
 
-`gta6rt --dry-run` maps an x86-64 image, applies base relocations, binds every import through the shim
+`dstnrt --dry-run` maps an x86-64 image, applies base relocations, binds every import through the shim
 registry or the host, and prints a report. It does **not** call `DllMain`, TLS callbacks or the entry point, so
 this page measures mapping and binding only; it does not claim the modules work.
 
@@ -16,7 +16,7 @@ Build the runtime, then point it at the package:
 powershell -File scripts/build_runtime.ps1
 
 $game = "D:\path\to\your\package"
-runtime\build\gta6rt.exe --dry-run "$game\XboxBvhBuilder.dll" --game-dir $game
+runtime\build\dstnrt.exe --dry-run "$game\XboxBvhBuilder.dll" --game-dir $game
 ```
 
 Each run prints one line per mapped module:
@@ -36,7 +36,7 @@ unimplemented by return policy: hresult=0 other=0
 
 ## Measured result
 
-All 16 DLLs in the package map at their preferred base `0x180000000` with no relocation, and every import binds. `gta6rt --init` on each one also runs its TLS callbacks and `DllMain` and exits 0 (counts re-measured with `--dry-run` and `--init` on `main` `aa2988cc`, Windows 11):
+All 16 DLLs in the package map at their preferred base `0x180000000` with no relocation, and every import binds. `dstnrt --init` on each one also runs its TLS callbacks and `DllMain` and exits 0 (counts re-measured with `--dry-run` and `--init` on `main` `aa2988cc`, Windows 11):
 
 | Image | Size of image | Entry RVA | Shim | Host | Module | Unimplemented | `--init` |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -59,7 +59,7 @@ All 16 DLLs in the package map at their preferred base `0x180000000` with no rel
 
 Since the library-loader shims (`runtime/shims/library_loader.cpp`), a module's `LoadLibrary*`, `GetModuleHandle*`, `GetProcAddress` and `FreeLibrary` imports count as shim, through `kernel32`, `kernelbase` or the `api-ms-win-core-libraryloader-*` set it names. That is why every image above has a few more shim and fewer host imports than before; the Xbox-specific imports below are unchanged. `DisableThreadLibraryCalls` is served the same way: a mapped module gets `TRUE` (the real function refuses a module the Windows loader did not map, which failed the `DllMain` of the four `msvcp140_*` satellite DLLs), and any other handle goes to the real function.
 
-The process shim (`runtime/shims/process.cpp`) serves `ExitProcess` and `GetCommandLineA/W` the same way: through `kernel32`, `kernelbase`, and `api-ms-win-core-processthreads-l1-1-0` and `api-ms-win-core-processenvironment-l1-1-0`, the sets the API-set umbrella libraries (`OneCore_apiset.lib`, `mincore.lib`) bind them to. `vcomp140.dll` imports `ExitProcess` from the first of these. The UCRT's `_get_narrow_winmain_command_line` and `_get_wide_winmain_command_line` are served too, so a `WinMain` executable gets the game's command line as `lpCmdLine`. `abort()` raises `SIGABRT` when the guest installed a handler (the guest's `signal()` import binds to the host CRT, so its table is the one raised here); with the default or ignore disposition, or a handler that returns, the run still ends with code 3. `run_tiny_game_abort_exit_codes` compares that with a native run of the stand-in image. The table above is `gta6rt --dry-run` on each DLL at the commit that added this paragraph.
+The process shim (`runtime/shims/process.cpp`) serves `ExitProcess` and `GetCommandLineA/W` the same way: through `kernel32`, `kernelbase`, and `api-ms-win-core-processthreads-l1-1-0` and `api-ms-win-core-processenvironment-l1-1-0`, the sets the API-set umbrella libraries (`OneCore_apiset.lib`, `mincore.lib`) bind them to. `vcomp140.dll` imports `ExitProcess` from the first of these. The UCRT's `_get_narrow_winmain_command_line` and `_get_wide_winmain_command_line` are served too, so a `WinMain` executable gets the game's command line as `lpCmdLine`. `abort()` raises `SIGABRT` when the guest installed a handler (the guest's `signal()` import binds to the host CRT, so its table is the one raised here); with the default or ignore disposition, or a handler that returns, the run still ends with code 3. `run_tiny_game_abort_exit_codes` compares that with a native run of the stand-in image. The table above is `dstnrt --dry-run` on each DLL at the commit that added this paragraph.
 
 The shims added since account for the rest of the difference from the first version of the table. The UCRT's `_configure_narrow_argv`, `_configure_wide_argv`, `__p___argc`, `__p___wargv` and `abort` are served by `runtime/shims/process.cpp`, which is why almost every DLL gained one or two. The file-system calls listed in *Console paths and the write overlay* below (`CreateFile2`, `CopyFile2`, `CreateDirectoryW`, `FindFirstFileExW`, `SetFileAttributesW` and the rest) account for `msvcp140.dll`, `vcomp140.dll`, `Bink2Scarlett.dll`'s `CreateFile2` and part of the two HTTP clients. `winhttp.dll` is a module the shims own (*WinHTTP offline* below), so every `WinHttp*` import binds to it: 15 in `libHttpClient.GDK.dll` (all 16 but `WinHttpCrackUrl`) and 15 in `XCurl.dll` (all but `WinHttpQueryOption`). That is why the two HTTP clients moved the most: 11 to 26 and 9 to 24 shim imports.
 
@@ -94,15 +94,15 @@ and size as an `xmem_transfer` event, because the enum values are not public. `x
 A title's file calls name the console's drives, so `GAME:\data\x.sps` is a file inside the installed game folder.
 [ivall/xcl](https://github.com/ivall/xcl) (GPL-2.0-only; facts only, no code) documents for Xbox Series GDK titles that
 `GAME:` maps to the game folder and that writes go to a writable overlay instead of the package, which stays read-only.
-`gta6rt` therefore shims `CreateFileA/W`, `FindFirstFileA/W`/`FindNextFileA/W`/`FindClose`, `GetFileAttributesA/W`,
+`dstnrt` therefore shims `CreateFileA/W`, `FindFirstFileA/W`/`FindNextFileA/W`/`FindClose`, `GetFileAttributesA/W`,
 `GetFileAttributesExA/W` and `DeleteFileA/W` (`runtime/shims/file_system.cpp`), under `kernel32.dll`, `kernelbase.dll`
 and the `api-ms-win-core-file-*` sets a GDK title links against.
 
 - A `GAME:` path (any case, `\` or `/`) maps under `--game-dir`. A path without the prefix is a host path and is
-  passed to the host unchanged. `--game-dir` defaults to the image's folder. `gta6rt` makes it and `--overlay`
-  absolute at startup, so a bare image name (`gta6rt --run game.exe` from the game folder) and a relative folder
+  passed to the host unchanged. `--game-dir` defaults to the image's folder. `dstnrt` makes it and `--overlay`
+  absolute at startup, so a bare image name (`dstnrt --run game.exe` from the game folder) and a relative folder
   both keep naming the same place after the title changes its current directory (CTest `run_tiny_game_dir`).
-  `G:\` is the same folder as `GAME:`, and `T:\` is a scratch folder, `<overlay>\.gta6rt-temp`, that `GAME:` does
+  `G:\` is the same folder as `GAME:`, and `T:\` is a scratch folder, `<overlay>\.dstnrt-temp`, that `GAME:` does
   not see (RT-218; the other console layers map those two drives this way, and only the executable can say which
   spelling GTA VI uses). A path under `--game-dir` or the overlay is always a host path, so a package that sits on
   a host drive `G:` keeps working, and with no folders configured `G:` and `T:` stay host drives.
@@ -110,9 +110,9 @@ and the `api-ms-win-core-file-*` sets a GDK title links against.
   is written there, and removing or moving it fails with `ERROR_ACCESS_DENIED`.
 - An open that can write, and `DeleteFile`, use the overlay: `--overlay DIR`, default `<game-dir>\overlay`. A
   write-open of a package file copies it into the overlay first, so `OPEN_EXISTING` keeps its bytes. The copy is
-  written under `<overlay>\.gta6rt-copy` and renamed into place, one copy-up at a time, so a process killed mid-copy
+  written under `<overlay>\.dstnrt-copy` and renamed into place, one copy-up at a time, so a process killed mid-copy
   or two threads opening the same file never leave a truncated copy under its name; a delete of a
-  package file leaves an empty marker under `<overlay>\.gta6rt-deleted`, which reads and listings treat as gone. The
+  package file leaves an empty marker under `<overlay>\.dstnrt-deleted`, which reads and listings treat as gone. The
   package is never written.
 - `DeleteFileA/W` checks the visible file's `FILE_ATTRIBUTE_READONLY`: a read-only package file with no overlay is
   refused with `ERROR_ACCESS_DENIED` before writing a deletion marker. An overlay copy supplies its own attributes,
@@ -126,7 +126,7 @@ and the `api-ms-win-core-file-*` sets a GDK title links against.
 - `CreateDirectory*` makes the folder in the overlay. A name the title can already see, including a folder only the
   package has, fails with `ERROR_ALREADY_EXISTS`; a missing parent with `ERROR_PATH_NOT_FOUND`.
 - `RemoveDirectory*` needs the folder empty in the title's view (`ERROR_DIR_NOT_EMPTY` otherwise). An overlay folder is
-  removed; a package folder is hidden by a `.gta6rt-dir` marker inside its marker folder, and stays on disk. A marker
+  removed; a package folder is hidden by a `.dstnrt-dir` marker inside its marker folder, and stays on disk. A marker
   folder on its own (left by a file deleted below it) does not hide anything.
 - `MoveFile*` writes the destination in the overlay. A package file is copied there and its old name deleted by a
   marker; an overlay file or an overlay-only folder is renamed. An existing destination needs
@@ -161,7 +161,7 @@ and the `api-ms-win-core-file-*` sets a GDK title links against.
 
 The table above has no unimplemented imports, but the game executable will. A call to one used to return 0
 silently, which for an `HRESULT` function is `S_OK` with its out parameters never written; the caller then carries on
-with stale pointers and fails somewhere unrelated. `LEONIDA_UNIMPLEMENTED` chooses what the thunk does instead
+with stale pointers and fails somewhere unrelated. `DSTN_UNIMPLEMENTED` chooses what the thunk does instead
 (details in `runtime/README.md`):
 
 - `log` (default): print the name once, return 0. Unchanged.
@@ -233,7 +233,7 @@ count and width, the function at that position of xgameruntime-docs' "Layout" li
 | `XErrorImpl` (`IXErrorImpl`, slots 3-5) | 3 (`XCurl.dll`) | slot 3, the docs' `_unknown_`, takes an HRESULT and a pointer: `XErrorReport(HRESULT, const char*)` |
 | `XNetworkingImpl` (`IXNetworkingImpl2`, slots 3-20) | 11-17 (`XCurl.dll`), 3-20 (`libHttpClient.GDK.dll`, each in its documented argument shape, e.g. 18-20 (enum, u64 pointer / u64 / pointer)) | the Utf16 `XNetworkingQuerySecurityInformationForUrl*` trio, `XNetworkingVerifyServerCertificate`, `XNetworkingGetConnectivityHint`, `XNetworkingRegister/UnregisterConnectivityHintChanged` (pointer, bool). Served offline, asked for with `IXNetworkingImpl2`'s id |
 | `XSystemImpl` (`IXSystemImpl5`, slots 3-8 known) | 3-8 (`libHttpClient.GDK.dll`) | 3-5 `XSystemGetConsoleId` / `GetXboxLiveSandboxId` / `GetAppSpecificDeviceId` (size, pointer, pointer each), 6 `XSystemHandleTrack` (two pointers, IXSystemImpl3), 7 `XSystemIsHandleValid` (pointer), 8 `XSystemAllowFullDownloadBandwidth` (bool, IXSystemImpl4); IXSystemImpl2 and 5 add no known method. Served offline |
-| `XPersistentLocalStorageImpl` (`IXPersistentLocalStorageImpl3`, slots 3-8) | none called (the table of ids only) | slots 3-7 are `XPersistentLocalStorageGetPathSize` / `GetPath` / `GetSpaceInfo` / `PromptUserForSpaceAsync` / `PromptUserForSpaceResult`, slot 8 `XPersistentLocalStorageMountForPackage` (IXPersistentLocalStorageImpl3). Slots from the public xgameruntime-docs and Wine IDL, not measured in a caller. Served offline: the folder is `<overlay>\.gta6rt-persistent`, which `GAME:` does not see, the quota is the 2048 MB of `MicrosoftGame.Config`, a prompt for space the quota holds succeeds, and `MountForPackage` is `E_NOTIMPL` |
+| `XPersistentLocalStorageImpl` (`IXPersistentLocalStorageImpl3`, slots 3-8) | none called (the table of ids only) | slots 3-7 are `XPersistentLocalStorageGetPathSize` / `GetPath` / `GetSpaceInfo` / `PromptUserForSpaceAsync` / `PromptUserForSpaceResult`, slot 8 `XPersistentLocalStorageMountForPackage` (IXPersistentLocalStorageImpl3). Slots from the public xgameruntime-docs and Wine IDL, not measured in a caller. Served offline: the folder is `<overlay>\.dstnrt-persistent`, which `GAME:` does not see, the quota is the 2048 MB of `MicrosoftGame.Config`, a prompt for space the quota holds succeeds, and `MountForPackage` is `E_NOTIMPL` |
 | `XPackageImpl` (`IXPackageImpl3`) | 3-19, 22, 24-27, 30, 32-34, 37-40 (`libHttpClient.GDK.dll`) | slots 3-34 are IXPackageImpl's 32 entries, 35-38 IXPackageImpl2's 4, 39-40 IXPackageImpl3's 2. Served offline: 3 identifier, 4 packaged process, 11 user locale, 24-26 mount path size / path / close; the rest log once and return `E_NOTIMPL` |
 | `XGameImpl` (`IXGameImpl3`, slots 3-5) | none in the package's DLLs (`libHttpClient.GDK.dll` holds its id only in the linked id table); the executable's requests are unmeasured | from the xgameruntime IDL: 3 `XGameGetXboxTitleId` (pointer), 4 `XLaunchNewGame` (two strings and a user handle, `void`), 5 `XLaunchRestartOnCrash` (string, u32). Served offline: the title id is `MicrosoftGame.Config`'s `<TitleId>` (`E_FAIL` without one), a new game launch is logged and ignored, a crash restart succeeds with nothing registered |
 
@@ -264,7 +264,7 @@ The executable's first boot confirms them, or names the slots that differ.
   `IXUserGamertagImpl` (`XUserGetGamertag`) is a second interface.
 - **The user:** one offline local user, always signed in. `XUserAddAsync` adds it with or without
   `AddDefaultUserSilently` (with `AllowGuests` as well, it's `E_INVALIDARG`, as documented). It has fixed non-zero user
-  and local ids, is not a guest, is an adult, and has every privilege. Its gamertag comes from `LEONIDA_GAMERTAG` (15
+  and local ids, is not a guest, is an adult, and has every privilege. Its gamertag comes from `DSTN_GAMERTAG` (15
   printable ASCII characters at most), `Player` otherwise.
 - **Handles:** each one is its own allocation, closed once by `XUserCloseHandle`. `XUserCompare` is 0 for any two
   handles, since they all name the one user.
@@ -284,7 +284,7 @@ The executable's first boot confirms them, or names the slots that differ.
 `XGameSaveImpl` (`runtime/shims/xgameruntime_gamesave.cpp`) is served from the same layout, also **not measured**:
 - **Interfaces:** the class id doubles as `IXGameSaveImpl`'s; `IXGameSaveImpl2` (adds the three `XGameSaveFiles`
   slots, 30-32) and `IXGameSaveImpl3` (no methods of its own) answer with the same 33-slot vtable.
-- **Storage:** `LEONIDA_SAVE_DIR\local-user\<container>\<blob>`, defaulting to `%LOCALAPPDATA%\Leonida\saves`,
+- **Storage:** `DSTN_SAVE_DIR\local-user\<container>\<blob>`, defaulting to `%LOCALAPPDATA%\DSTN\saves`,
   names %-encoded: the layout `tools/saves.py import` writes ([saves.md](saves.md#importing-into-the-runtime)).
   `XGameSaveFilesGetFolderWithUi*` gives `<root>\files\<configId>`.
 - **Updates:** writes and deletes are buffered; `XGameSaveSubmitUpdate` writes each new blob beside its final name,
@@ -299,7 +299,7 @@ The executable's first boot confirms them, or names the slots that differ.
   and `XGameSaveGetContainerInfo` of a missing container returns `S_OK` without a callback. `syncOnDemand` is
   ignored: nothing syncs offline.
 
-`xgameruntime_gamesave_test` drives every slot against a temporary `LEONIDA_SAVE_DIR`.
+`xgameruntime_gamesave_test` drives every slot against a temporary `DSTN_SAVE_DIR`.
 
 `XStoreImpl` (`runtime/shims/xgameruntime_store.cpp`), from the same layout, also **not measured**:
 - **Interfaces:** the class id doubles as `IXStoreImpl`'s; `IXStoreImpl2`-`6` answer with the same 84-slot vtable.
@@ -318,7 +318,7 @@ The executable's first boot confirms them, or names the slots that differ.
 `XGameEventImpl`, `XGameUiImpl`, `XGameStreamingImpl`, `XDisplayImpl` and `XUserDeviceImpl`
 (`runtime/shims/xgameruntime_offline.cpp`), from the same layout, also **not measured**:
 - **`XGameEventWrite`** succeeds; the events are dropped. The first one's name is logged, and
-  `LEONIDA_LOG_GAME_EVENTS=1` logs each with its dimensions and measurements.
+  `DSTN_LOG_GAME_EVENTS=1` logs each with its dimensions and measurements.
 - **Dialogs:** a message dialog's title, text and buttons go to the log (`[rt] game dialog:`), and it completes at
   once with its default button; an error dialog's HRESULT and context are logged and it is dismissed. So an error
   the game would show on screen at boot is readable in the log. Every other UI (profile cards, pickers, text entry,
@@ -331,7 +331,7 @@ The executable's first boot confirms them, or names the slots that differ.
 - **ASSUMPTION:** the parameter lists of `XGameUiShowMessageDialogAsync` and
   `XGameStreamingRegisterConnectionStateChanged`, from the GDK reference, not re-checked against the executable.
 
-- **HDR:** `XDisplayTryEnableHdrMode` answers Disabled, because the host output is SDR. With `LEONIDA_HDR=1` it
+- **HDR:** `XDisplayTryEnableHdrMode` answers Disabled, because the host output is SDR. With `DSTN_HDR=1` it
   answers Enabled with the documented default tone-map luminances (0.01, 1000, 1000 nits).
 - **Devices:** every device belongs to the offline user (`XUserFindForDevice` hands out an `XUserHandle` the title
   closes). Association and audio-endpoint registrations hand out tokens that never fire. The user has no audio
@@ -339,7 +339,7 @@ The executable's first boot confirms them, or names the slots that differ.
   documented for desktop. **ASSUMPTION:** `APP_LOCAL_DEVICE_ID` is 32 bytes.
 
 `xgameruntime_offline_test` drives the five classes; `xgameruntime_offline_hdr` runs it again with
-`LEONIDA_HDR=1`.
+`DSTN_HDR=1`.
 
 Two more classes are served from `tools/gdk_runtime_calls.py`'s measurement of `libHttpClient.GDK.dll` (it finds the
 thunks in the code without running it and prints, per class, the interface id asked for, the slots called and the
@@ -433,7 +433,7 @@ end to end with a synthetic bundled DLL importing `xmem.dll!XMemAlloc` and `XMem
 `XCurl.dll` and `libHttpClient.GDK.dll` do their HTTP through WinHTTP: between them they import 16 functions from
 `winhttp.dll` (`WinHttpOpen`, `Connect`, `OpenRequest`, `SendRequest`, `ReceiveResponse`, `QueryHeaders`,
 `QueryDataAvailable`, `ReadData`, `WriteData`, `AddRequestHeaders`, `SetOption`, `QueryOption`, `SetTimeouts`,
-`SetStatusCallback`, `CloseHandle`, `CrackUrl`) and nothing from Winsock. Nothing here goes online, so `gta6rt` owns
+`SetStatusCallback`, `CloseHandle`, `CrackUrl`) and nothing from Winsock. Nothing here goes online, so `dstnrt` owns
 `winhttp.dll` (`runtime/shims/winhttp_offline.cpp`) and answers all 16 in-process:
 
 - Sessions, connections and requests are local handles: no name is resolved and no socket is opened.
@@ -459,7 +459,7 @@ asynchronous paths with `.invalid` names; it opens no connection.
 - It proves the loader parses real Xbox Series PE files, maps their sections, applies no unnecessary relocation,
   walks their import tables, and classifies every thunk.
 - The loader also registers each image's unwind table. `pe_loader_test` checks, for every DLL present in
-  `LEONIDA_GAME_DIR`, that the whole exception directory is registered, that `RtlLookupFunctionEntry` returns
+  `DSTN_GAME_DIR`, that the whole exception directory is registered, that `RtlLookupFunctionEntry` returns
   each entry for its first byte, and that the entry point is covered (directly, or through the `jmp rel32` thunks
   an incrementally linked entry point goes through: a thunk touches no stack, so it has no entry of its own).
   Measured on all 16 DLLs: every table passes the loader's checks and every entry resolves to itself.

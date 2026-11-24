@@ -34,7 +34,7 @@
 #include <limits>
 #include <mutex>
 
-namespace leonida {
+namespace dstn {
 
 // HRESULT values as plain numbers, so this header stands alone.
 namespace pacer_hr {
@@ -443,4 +443,4 @@ private:
     std::deque<Record> records_;
 };
 
-}  // namespace leonida
+}  // namespace dstn

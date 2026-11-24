@@ -47,16 +47,16 @@ class FallbackBuildsTheHarnesses(unittest.TestCase):
         self.assertIn("vk_sampler_test", harnesses)
         self.assertEqual(harnesses - self.programs, set(), "missing from build_runtime.ps1's cl.exe fallback")
 
-    def test_the_launcher_compiles_every_source_cmake_gives_gta6rt(self):
+    def test_the_launcher_compiles_every_source_cmake_gives_dstnrt(self):
         """BUILD-680: main.cpp calls rt::fs::configure, but the fallback left out shims/file_system.cpp (LNK2019).
-        Every source of CMake's add_executable(gta6rt ...) must be in the fallback's launcher list ($files)."""
+        Every source of CMake's add_executable(dstnrt ...) must be in the fallback's launcher list ($files)."""
         cmake = (ROOT / "runtime" / "CMakeLists.txt").read_text(encoding="utf-8")
-        block = re.search(r"add_executable\(gta6rt\s+(.*?)\)", cmake, re.S).group(1)
+        block = re.search(r"add_executable\(dstnrt\s+(.*?)\)", cmake, re.S).group(1)
         wanted = {item.replace("/", "\\") for item in block.split() if item.endswith(".cpp")}
         files = re.search(r"\$files = (.*?) \| ForEach-Object", self.body).group(1)
         listed = set(re.findall(r'"([^"]+\.cpp)"', files))
         self.assertTrue(wanted)
-        self.assertEqual(wanted - listed, set(), "in CMake's gta6rt sources but not in the cl.exe fallback")
+        self.assertEqual(wanted - listed, set(), "in CMake's dstnrt sources but not in the cl.exe fallback")
 
     def test_every_test_source_it_compiles_exists(self):
         sources = re.findall(r'"\$src\\test\\([A-Za-z0-9_]+\.cpp)"', self.body)
@@ -67,28 +67,28 @@ class FallbackBuildsTheHarnesses(unittest.TestCase):
 
     def test_the_pipeline_checker_gets_the_stack_reserve_cmake_gives_it(self):
         """BUILD-1457: a driver compiles on vk_pipeline_check's threads, and AMD's Windows compiler overflows the
-        1 MB PE default. CMake links the checker with /STACK:<LEONIDA_PIPELINE_CHECK_STACK>; the fallback has to pass
+        1 MB PE default. CMake links the checker with /STACK:<DSTN_PIPELINE_CHECK_STACK>; the fallback has to pass
         the same number on the checker's own cl line (a /link option applies to that one program)."""
         cmake = (ROOT / "runtime" / "CMakeLists.txt").read_text(encoding="utf-8")
-        reserve = re.search(r"set\(LEONIDA_PIPELINE_CHECK_STACK (\d+)\)", cmake).group(1)
+        reserve = re.search(r"set\(DSTN_PIPELINE_CHECK_STACK (\d+)\)", cmake).group(1)
         self.assertGreaterEqual(int(reserve), 8 * 1024 * 1024)
-        self.assertIn("target_link_options(vk_pipeline_check PRIVATE /STACK:${LEONIDA_PIPELINE_CHECK_STACK})", cmake)
+        self.assertIn("target_link_options(vk_pipeline_check PRIVATE /STACK:${DSTN_PIPELINE_CHECK_STACK})", cmake)
         lines = [line for line in self.body.splitlines() if "/Fe:vk_pipeline_check.exe" in line]
         self.assertEqual(len(lines), 1)
         self.assertRegex(lines[0], rf"/Fe:vk_pipeline_check\.exe /link (\S+ )*/STACK:{reserve}( |$)")
 
     def test_the_loader_gets_the_stack_reserve_cmake_gives_it(self):
-        """BUILD-1457, the loader's side: a game thread with the default stack size gets the reserve in gta6rt.exe's
-        header, and the driver compiles a pipeline's shaders on the thread that creates it. CMake links gta6rt with
-        /STACK:<GTA6RT_STACK>; the fallback has to pass the same number, and it is the number run_entry gives the
+        """BUILD-1457, the loader's side: a game thread with the default stack size gets the reserve in dstnrt.exe's
+        header, and the driver compiles a pipeline's shaders on the thread that creates it. CMake links dstnrt with
+        /STACK:<DSTNRT_STACK>; the fallback has to pass the same number, and it is the number run_entry gives the
         entry thread, so every game thread that asks for no size has the same room."""
         cmake = (ROOT / "runtime" / "CMakeLists.txt").read_text(encoding="utf-8")
-        reserve = re.search(r"set\(GTA6RT_STACK (\d+)\)", cmake).group(1)
+        reserve = re.search(r"set\(DSTNRT_STACK (\d+)\)", cmake).group(1)
         self.assertGreaterEqual(int(reserve), 8 * 1024 * 1024)
-        self.assertRegex(cmake, r"target_link_options\(gta6rt PRIVATE [^)]*/STACK:\$\{GTA6RT_STACK\}\)")
-        lines = [line for line in self.body.splitlines() if "/Fe:gta6rt.exe" in line]
+        self.assertRegex(cmake, r"target_link_options\(dstnrt PRIVATE [^)]*/STACK:\$\{DSTNRT_STACK\}\)")
+        lines = [line for line in self.body.splitlines() if "/Fe:dstnrt.exe" in line]
         self.assertEqual(len(lines), 1)
-        self.assertRegex(lines[0], rf"/Fe:gta6rt\.exe /link (\S+ )*/STACK:{reserve}( |$)")
+        self.assertRegex(lines[0], rf"/Fe:dstnrt\.exe /link (\S+ )*/STACK:{reserve}( |$)")
         shim = (ROOT / "runtime" / "shims" / "process_shim.h").read_text(encoding="utf-8")
         megabytes = re.search(r"run_entry\(void\* entry, std::size_t stack_bytes = (\d+)u << 20\);", shim).group(1)
         self.assertEqual(int(megabytes) << 20, int(reserve))
@@ -111,11 +111,11 @@ class FallbackBuildsTheHarnesses(unittest.TestCase):
         def run_probe(vs_dir: Path, path_dirs: list[Path]) -> tuple[str, str]:
             ps = (
                 "$ErrorActionPreference = 'Stop'\n"
-                "$vs = $env:LEONIDA_VS_DIR\n"
+                "$vs = $env:DSTN_VS_DIR\n"
                 + snippet
                 + "\nWrite-Output \"CMAKE=$cmake\"\nWrite-Output \"NINJA=$ninja\"\n"
             )
-            env = dict(os.environ, PATH=";".join(str(p) for p in path_dirs), LEONIDA_VS_DIR=str(vs_dir))
+            env = dict(os.environ, PATH=";".join(str(p) for p in path_dirs), DSTN_VS_DIR=str(vs_dir))
             res = subprocess.run(
                 ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps],
                 env=env, capture_output=True, text=True, check=True, timeout=30,

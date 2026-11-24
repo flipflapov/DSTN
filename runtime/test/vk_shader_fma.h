@@ -15,7 +15,7 @@
 #include <iterator>
 #include <vector>
 
-namespace leonida::vk_test {
+namespace dstn::vk_test {
 
 #ifdef VK_KHR_SHADER_FMA_EXTENSION_NAME
 inline constexpr bool shader_fma_in_headers = true;
@@ -116,4 +116,4 @@ struct ShaderFma {
     }
 };
 
-}  // namespace leonida::vk_test
+}  // namespace dstn::vk_test

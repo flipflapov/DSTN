@@ -124,9 +124,9 @@ class Contracts(unittest.TestCase):
         env = {
             k: v
             for k, v in os.environ.items()
-            if not k.startswith("LEONIDA_HW_") and k != "LEONIDA_AMD_CLANG"
+            if not k.startswith("DSTN_HW_") and k != "DSTN_AMD_CLANG"
         }
-        env["LEONIDA_AMD_CLANG"] = os.path.join(REPO, "does_not_exist_clang")
+        env["DSTN_AMD_CLANG"] = os.path.join(REPO, "does_not_exist_clang")
         proc = subprocess.run(
             [sys.executable, "-I", PROBE],
             env=env,

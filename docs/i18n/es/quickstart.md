@@ -1,4 +1,4 @@
-# Leonida — Guía de inicio (`es`)
+# DSTN — Guía de inicio (`es`)
 
 > [!NOTE]
 > La documentación en inglés ([`README.md`](../../../README.md), [`CONTRIBUTING.md`](../../../CONTRIBUTING.md) y
@@ -6,9 +6,9 @@
 > estables de instalación y compilación (sincronizada con el commit `aa2988cc`). Para el estado del proyecto, que
 > cambia a diario, consulte el [`README.md`](../../../README.md).
 
-## Qué es Leonida
+## Qué es DSTN
 
-Leonida es un proyecto de recompilación estática de Grand Theft Auto VI (versión Xbox Series) para ejecutarlo de
+DSTN es un proyecto de recompilación estática de Grand Theft Auto VI (versión Xbox Series) para ejecutarlo de
 forma nativa en Windows. Se compila **en su PC, a partir de su propia copia del juego**. Los shaders RDNA2 de la
 consola se traducen a SPIR-V (Vulkan), los recursos se leen directamente de su paquete y el software de sistema de
 la consola se reimplementa como shims.
@@ -72,7 +72,7 @@ movido a OneDrive), Games, su carpeta de usuario y en la raíz de cada disco, do
 profundidad. Reconoce la versión por el tamaño de algunos archivos, sin leer archivos grandes. Si encuentra
 varias copias, le pregunta cuál usar; si no encuentra ninguna, le pide que pegue la ruta de la carpeta. Antes de
 empezar comprueba los requisitos y el espacio libre, y enumera de una vez todo lo que falta. El resultado va a
-`Documents\Leonida`. Una compilación interrumpida se reanuda donde quedó.
+`Documents\DSTN`. Una compilación interrumpida se reanuda donde quedó.
 
 ### Si dispone de poco espacio
 
@@ -83,7 +83,7 @@ ofrece la alternativa sin `assets` cuando esa etapa no cabe. Puede situar tanto 
 unidad.
 
 El runtime accede al paquete en su ubicación original. Si la unidad del paquete es de solo lectura, use
-`gta6rt --overlay <carpeta con permisos de escritura>`: `--overlay` es una opción de `gta6rt`.
+`dstnrt --overlay <carpeta con permisos de escritura>`: `--overlay` es una opción de `dstnrt`.
 
 Conserve los archivos `.s` de `work/shaders/dxbc/disasm`: borrarlos junto con
 `work/shaders/spirv/index.json` puede hacer que la etapa de shaders parezca terminada con cero shaders. Si la
@@ -96,7 +96,7 @@ python -I make_game.py --find                          # enumera las copias enco
 python -I make_game.py --pick                          # elige la carpeta mediante un diálogo
 python -I make_game.py --check                         # verifica su copia, sin compilar nada
 python -I make_game.py --check --full-check            # también comprueba los SHA-256 de todos los archivos (lento)
-python -I make_game.py --game "D:\ruta\al\paquete" --out "D:\Games\Leonida" --work "E:\leonida-work"
+python -I make_game.py --game "D:\ruta\al\paquete" --out "D:\Games\DSTN" --work "E:\dstn-work"
 python -I make_game.py --stages check,shaders,runtime   # sin la exportación de recursos (unos 30 GB)
 python -I make_game.py --stages shaders,assets         # solo algunas etapas
 python -I make_game.py --game "D:\ruta\al\paquete" --wav  # además decodifica el Opus a WAV PCM (ocupa mucho)
@@ -177,10 +177,10 @@ SDK de Windows preparados por [xwin](https://github.com/Jake-Shadle/xwin), en `X
 explica la preparación. Si faltan esas herramientas, `runtime` se omite de las etapas predeterminadas; pedirlo
 explícitamente enumera lo que falta antes de empezar.
 
-También puede pasar `--runtime-build <carpeta>` con una compilación de Windows (`gta6rt.exe` y
-`gta6rt_tls_host.dll`), por ejemplo el artefacto `runtime-windows` del trabajo `windows` del workflow Runtime,
+También puede pasar `--runtime-build <carpeta>` con una compilación de Windows (`dstnrt.exe` y
+`dstnrt_tls_host.dll`), por ejemplo el artefacto `runtime-windows` del trabajo `windows` del workflow Runtime,
 descomprimido. Así evita compilar el runtime; la misma opción funciona en Windows. En Linux el script escribe
-`gta6rt.sh`, que lanza `gta6rt.exe` con `wine`, o con el Wine indicado por la variable `WINE` (para Proton, su
+`dstnrt.sh`, que lanza `dstnrt.exe` con `wine`, o con el Wine indicado por la variable `WINE` (para Proton, su
 `files/bin/wine`).
 - **`--wave64-emulate`**: traduce los shaders compute y mesh wave64 de forma exacta cualquiera que sea el tamaño de
   subgrupo de la GPU. Las GPU NVIDIA e Intel usan subgrupos de 32 y lo necesitan. El valor predeterminado, `auto`,
@@ -190,8 +190,8 @@ descomprimido. Así evita compilar el runtime; la misma opción funciona en Wind
 - **`--wav`**: desactivado por defecto, porque el WAV PCM de 16 bits ocupa varias veces más que el Ogg Opus.
 - **Linux y Wine/Proton**: `make_game.py` también funciona en Linux. El cargador es un programa de Windows y se
   ejecuta bajo Wine o Proton. Para la etapa `runtime` puede pasar `--runtime-build <carpeta>` con una compilación
-  de Windows (`gta6rt.exe` y `gta6rt_tls_host.dll`): el script escribe entonces `gta6rt.sh`, que lanza
-  `gta6rt.exe` con `wine`, o con el Wine indicado por la variable `WINE` (para Proton, su `files/bin/wine`).
+  de Windows (`dstnrt.exe` y `dstnrt_tls_host.dll`): el script escribe entonces `dstnrt.sh`, que lanza
+  `dstnrt.exe` con `wine`, o con el Wine indicado por la variable `WINE` (para Proton, su `files/bin/wine`).
 
 ## Problemas habituales
 
@@ -203,7 +203,7 @@ descomprimido. Así evita compilar el runtime; la misma opción funciona en Wind
   de `D3D12_VERSIONED_ROOT_SIGNATURE_DESC`: actualice el SDK de Windows a `10.0.26100` o superior, con el
   Instalador de Visual Studio o con `winget install Microsoft.WindowsSDK.10.0.26100`, y luego borre
   `runtime/build` y repita la configuración.
-- **Se quedó sin espacio en `C:`**: pase `--work "D:\leonida-work"` para situar los archivos temporales en otra
+- **Se quedó sin espacio en `C:`**: pase `--work "D:\dstn-work"` para situar los archivos temporales en otra
   unidad; también puede cambiar `--out` u omitir `assets` con `--stages check,shaders,runtime` (unos 30 GB).
 - **Windows se niega a lanzar los programas de prueba recién compilados** («An Application Control policy has
   blocked this file»): es el control inteligente de aplicaciones de Windows 11. Véase

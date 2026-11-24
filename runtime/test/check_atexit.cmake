@@ -1,4 +1,4 @@
-# atexit handlers, static destructors and every way out: tiny_atexit run through `gta6rt --run` must print the
+# atexit handlers, static destructors and every way out: tiny_atexit run through `dstnrt --run` must print the
 # sequence written below and end with its exit code. That is what the program does natively on Windows, and the
 # native run is held to the same sequence, so the two cannot agree on a wrong answer. Under Wine both runs go through
 # RUNNER, and Wine's own CRT differs in places (it drops a handler registered while handlers run, and its _exit does
@@ -27,7 +27,7 @@ set(code_c_exit 12)
 set(expect_concurrent_exit "${ctors};slow handler started;slow handler done;${handlers}")
 set(code_concurrent_exit 7)
 
-# The program's own lines, in order, without the prefix; everything gta6rt prints is dropped.
+# The program's own lines, in order, without the prefix; everything dstnrt prints is dropped.
 function(guest_lines output result)
   string(REPLACE "\r\n" "\n" output "${output}")
   string(REPLACE ";" "," output "${output}")
@@ -55,13 +55,13 @@ foreach(mode return exit _exit quick_exit ExitProcess cexit c_exit concurrent_ex
     string(CONCAT native_diff "[${mode}] native run differs from the expected sequence"
       "\n  expected (${code_${mode}}): ${expect_${mode}}\n  native   (${native_code}): ${native_lines}")
     if(RUNNER)
-      message(STATUS "${native_diff}\n  (the host CRT differs from Windows; not a gta6rt failure)")
+      message(STATUS "${native_diff}\n  (the host CRT differs from Windows; not a dstnrt failure)")
     else()
       string(APPEND failures "\n${native_diff}\n  (the fixture or the host changed)")
     endif()
   endif()
   if(NOT run_code STREQUAL code_${mode} OR NOT run_lines STREQUAL expect_${mode})
-    string(APPEND failures "\n[${mode}] gta6rt --run differs from the expected sequence"
+    string(APPEND failures "\n[${mode}] dstnrt --run differs from the expected sequence"
       "\n  expected (${code_${mode}}): ${expect_${mode}}\n  --run    (${run_code}): ${run_lines}\n${run_err}")
   endif()
 endforeach()
