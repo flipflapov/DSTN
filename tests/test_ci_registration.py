@@ -270,15 +270,19 @@ def spirv_gated_semantic_files(root, files):
     return gated
 
 
+# Installing SPIRV-Tools: apt on a Linux runner, or conda-forge on the Windows runners DSTN's CI uses.
+SPIRV_TOOLS_INSTALL = r"(?:apt-get\s+install|conda\.exe\"?\)?\s+(?:create|install))[^\n]*\bspirv-tools\b"
+
+
 def spirv_tools_problem(workflow, gated):
-    """Why the semantic job cannot run `gated` tests, or None: it needs an apt install of spirv-tools and the
-    DSTN_REQUIRE_SPIRV_TOOLS=1 switch that makes a missing tool fail."""
+    """Why the semantic job cannot run `gated` tests, or None: it needs an install of spirv-tools (apt or conda) and
+    the DSTN_REQUIRE_SPIRV_TOOLS=1 switch that makes a missing tool fail."""
     if not gated:
         return None
     job = semantic_job_text(workflow)
     problems = []
-    if not re.search(r"apt-get\s+install[^\n]*\bspirv-tools\b", job):
-        problems.append("it does not `apt-get install` spirv-tools")
+    if not re.search(SPIRV_TOOLS_INSTALL, job):
+        problems.append("it does not install spirv-tools")
     if not re.search(r"DSTN_REQUIRE_SPIRV_TOOLS:[^\n]*['\"]1['\"]", job):
         problems.append("it never sets DSTN_REQUIRE_SPIRV_TOOLS to 1")
     return "; ".join(problems) or None
@@ -291,10 +295,10 @@ def spirv_using_stdlib_files(root, files, rules):
 
 
 def stdlib_loop_jobs_with_spirv_tools(workflow):
-    """Jobs that `apt-get install` spirv-tools and run the standard-library loop (`python -I "$t"`)."""
+    """Jobs that install spirv-tools (apt or conda) and run the standard-library loop (`python -I "$t"`)."""
     jobs = re.findall(r"^  ([A-Za-z0-9_-]+):\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)", workflow, re.M | re.S)
     return [name for name, job in jobs if re.search(r'python\s+-I\s+"\$t"', job)
-            and re.search(r"apt-get\s+install[^\n]*\bspirv-tools\b", job)]
+            and re.search(SPIRV_TOOLS_INSTALL, job)]
 
 
 def has_main_guard(source):
@@ -381,7 +385,7 @@ class RepositoryRegistrationTest(unittest.TestCase):
             self.assertIn(expected, gated)
         problem = spirv_tools_problem(read(ROOT, WORKFLOW), gated)
         self.assertIsNone(problem, "the `semantic-tests` job in ci.yml runs tests that skip without SPIRV-Tools, but " +
-                          str(problem) + ".\nInstall spirv-tools on the Linux leg and set DSTN_REQUIRE_SPIRV_TOOLS "
+                          str(problem) + ".\nInstall spirv-tools in that job and set DSTN_REQUIRE_SPIRV_TOOLS "
                           "to '1' there (see tests/semantic/test_spirv_tools_required.py).")
 
     def test_a_job_runs_the_spirv_using_stdlib_files_with_spirv_tools(self):
@@ -399,14 +403,13 @@ class RepositoryRegistrationTest(unittest.TestCase):
         gated = ["tests/semantic/test_fma_khr.py"]
         self.assertIsNone(spirv_tools_problem(workflow, gated))
         self.assertIsNone(spirv_tools_problem(workflow, []))
-        no_install = workflow.replace("sudo apt-get install -y --no-install-recommends spirv-tools\n",
-                                      "sudo apt-get install -y --no-install-recommends curl\n", 1)
+        job = semantic_job_text(workflow)
+        no_install = workflow.replace(job, job.replace("spirv-tools", "curl"))
         self.assertNotEqual(no_install, workflow)
-        self.assertIn("apt-get", no_install)
-        # the translator-tests job above installs spirv-tools too; only the semantic job's own text may count
-        self.assertIn("does not `apt-get install` spirv-tools", spirv_tools_problem(no_install, gated) or "")
-        no_switch = workflow.replace("DSTN_REQUIRE_SPIRV_TOOLS: ${{ runner.os == 'Linux' && '1' || '0' }}",
-                                     "DSTN_REQUIRE_SPIRV_TOOLS: ${{ runner.os == 'Linux' && 'yes' || 'no' }}")
+        # the translator-tests job installs spirv-tools too; only the semantic job's own text may count
+        self.assertTrue(re.search(SPIRV_TOOLS_INSTALL, no_install))
+        self.assertIn("does not install spirv-tools", spirv_tools_problem(no_install, gated) or "")
+        no_switch = workflow.replace('DSTN_REQUIRE_SPIRV_TOOLS: "1"', 'DSTN_REQUIRE_SPIRV_TOOLS: "yes"')
         self.assertNotEqual(no_switch, workflow)
         self.assertIn("never sets DSTN_REQUIRE_SPIRV_TOOLS", spirv_tools_problem(no_switch, gated) or "")
 

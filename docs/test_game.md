@@ -23,13 +23,31 @@
 | № | Пункт | Шаг для запуска без меню |
 |---|---|---|
 | 1 | Проверить компьютер: Visual Studio, Windows SDK, Vulkan SDK и видеокарта, Python, .NET, llvm-mc | `Start-DSTN.bat check` |
-| 2 | Собрать загрузчик `dstnrt.exe` (разделы 1 и 3 ниже) | `Start-DSTN.bat build` |
-| 3 | Запустить `tiny_game` четыре раза: основной запуск, `tls`, `eh`, `stack` | `Start-DSTN.bat testgame` |
-| 4 | Тестовый кадр на Vulkan (`tiny_frame`) | `Start-DSTN.bat frame` |
-| 5 | Все тесты загрузчика (CTest) | `Start-DSTN.bat tests` |
-| 6 | Найти копии игры на этом ПК (`make_game.py --find`) | `Start-DSTN.bat find` |
-| 7 | Проверить свою копию игры (`make_game.py --check`) | `Start-DSTN.bat game-check` |
-| 8 | Собрать порт: стадии `check,shaders,runtime` или свои | `Start-DSTN.bat port` |
+| 2 | Установить недостающее автоматически (см. ниже) | `Start-DSTN.bat install` |
+| 3 | Собрать загрузчик `dstnrt.exe` (разделы 1 и 3 ниже) | `Start-DSTN.bat build` |
+| 4 | Запустить `tiny_game` четыре раза: основной запуск, `tls`, `eh`, `stack` | `Start-DSTN.bat testgame` |
+| 5 | Тестовый кадр на Vulkan (`tiny_frame`) | `Start-DSTN.bat frame` |
+| 6 | Все тесты загрузчика (CTest) | `Start-DSTN.bat tests` |
+| 7 | Найти копии игры на этом ПК (`make_game.py --find`) | `Start-DSTN.bat find` |
+| 8 | Проверить свою копию игры (`make_game.py --check`) | `Start-DSTN.bat game-check` |
+| 9 | Собрать порт: стадии `check,shaders,runtime` или свои | `Start-DSTN.bat port` |
+
+Пункт 2 ставит только то, чего не хватает, и сначала показывает список и спрашивает согласия. Программы
+ставятся через `winget` (встроен в Windows 10/11; если его нет — «App Installer» из Microsoft Store):
+
+| Что | Как |
+|---|---|
+| Python 3.12 | `winget install Python.Python.3.12` |
+| Git | `winget install Git.Git` |
+| Visual Studio 2022 Build Tools с C++, Windows SDK 10.0.26100 и C++ CMake tools | `winget install Microsoft.VisualStudio.2022.BuildTools`; если Visual Studio уже есть, недостающие компоненты добавляет её собственный установщик |
+| Vulkan SDK | `winget install KhronosGroup.VulkanSDK` |
+| .NET 8 SDK | `winget install Microsoft.DotNet.SDK.8` |
+| Подмодуль `third_party/rpf9-explorer` | `git submodule update --init --recursive` |
+| llvm-mc с целью AMDGPU | `scripts/build_llvm_mc.ps1`, сборка из исходников LLVM, 20–40 минут (спрашивает отдельно) |
+| ffmpeg (необязательно) | `winget install Gyan.FFmpeg` (спрашивает отдельно) |
+
+Windows может запросить права администратора для каждого установщика. Если программа установилась, но проверка её
+не видит, закройте окно и запустите `Start-DSTN.bat` заново: некоторые установщики меняют `PATH` только для новых окон.
 
 Каждый запуск пишет весь вывод в `logs\dstn-<дата>.log` (папка `logs` не попадает в git). В журнале только вывод
 инструментов, без данных игры, поэтому его можно присылать при ошибке. Папку игры меню запоминает в

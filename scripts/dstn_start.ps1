@@ -1,14 +1,14 @@
 ﻿# DSTN (ДАСТАН): стартовое меню для Windows.
 #
 # Запуск: двойной щелчок по Start-DSTN.bat в корне репозитория. Один шаг без меню: Start-DSTN.bat <шаг>, где шаг —
-# check, build, testgame, frame, tests, find, game-check или port.
+# check, install, build, testgame, frame, tests, find, game-check или port.
 #
 # Каждый запуск пишет всё, что вывели шаги, в logs\dstn-<дата>.log. Этот лог можно присылать разработчику: в нём
 # только вывод инструментов. Файлы игры, извлечённые ресурсы и шейдеры никуда не выкладывайте.
 #
 # Файл сохранён в UTF-8 с BOM: без BOM Windows PowerShell 5.1 читает его как ANSI и портит русский текст.
 param(
-    [ValidateSet("", "check", "build", "testgame", "frame", "tests", "find", "game-check", "port")]
+    [ValidateSet("", "check", "install", "build", "testgame", "frame", "tests", "find", "game-check", "port")]
     [string]$Step = ""
 )
 Set-StrictMode -Version 2
@@ -24,6 +24,14 @@ $GameFolderFile = Join-Path $LogDir "game_folder.txt"
 $script:Log = [System.IO.StreamWriter]::new($LogPath, $true, [System.Text.UTF8Encoding]::new($false))
 $script:Log.AutoFlush = $true
 $script:LastOutput = @()
+
+# Компоненты Visual Studio, без которых не собрать загрузчик: компилятор C++ x64, Windows SDK 10.0.26100 (корневые
+# сигнатуры версии 1.2) и CMake с Ninja («C++ CMake tools for Windows»).
+$VsComponents = @(
+    "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+    "Microsoft.VisualStudio.Component.Windows11SDK.26100",
+    "Microsoft.VisualStudio.Component.VC.CMake.Project"
+)
 
 # ---------------------------------------------------------------- вывод и журнал
 
@@ -89,6 +97,12 @@ function Write-Result([string]$Name, [bool]$Ok, [string]$Note = "") {
     }
 }
 
+function Confirm-Yes([string]$Question) {
+    $answer = Read-Host "$Question [Д/н]"
+    if ($null -eq $answer) { return $false }
+    return @("", "д", "да", "y", "yes") -contains $answer.Trim().ToLowerInvariant()
+}
+
 # ---------------------------------------------------------------- поиск инструментов
 
 # Тихий запуск для проверок: stdout одной строкой и код выхода, stderr отброшен. При ErrorActionPreference = Stop
@@ -104,6 +118,19 @@ function Invoke-Quiet([string]$Exe, [string[]]$Arguments) {
         return @{ Code = -1; Text = "" }
     } finally {
         $ErrorActionPreference = $previous
+    }
+}
+
+# После установки программы PATH и переменные вроде VULKAN_SDK меняются только в реестре: перечитываем их, чтобы
+# следующие шаги этого же окна увидели новые программы.
+function Update-SessionEnvironment {
+    $machine = [Environment]::GetEnvironmentVariable("Path", "Machine")
+    $user = [Environment]::GetEnvironmentVariable("Path", "User")
+    $env:Path = (@($machine, $user) | Where-Object { $_ }) -join ";"
+    foreach ($name in "VULKAN_SDK", "LLVM_MC") {
+        $value = [Environment]::GetEnvironmentVariable($name, "User")
+        if (-not $value) { $value = [Environment]::GetEnvironmentVariable($name, "Machine") }
+        if ($value) { Set-Item -Path "Env:$name" -Value $value }
     }
 }
 
@@ -126,7 +153,7 @@ function Find-Python {
 function Invoke-Python([string[]]$Arguments) {
     $python = Find-Python
     if (-not $python) {
-        Write-Missing "Python 3.12 или новее" "https://www.python.org/downloads/ — при установке отметьте «Add python.exe to PATH»."
+        Write-Missing "Python 3.12 или новее" "Пункт 2 «Установить недостающее» поставит его сам."
         return -1
     }
     $exe = $python[0]
@@ -142,6 +169,49 @@ function Find-VisualStudio {
     $path = ($result.Text -split "`n" | Where-Object { $_ } | Select-Object -First 1)
     if ($path) { return $path.Trim() }
     return $null
+}
+
+function Test-VsCMake([string]$Vs) {
+    if (-not $Vs) { return $false }
+    $cmakeDir = Join-Path $Vs "Common7\IDE\CommonExtensions\Microsoft\CMake"
+    return (Test-Path -LiteralPath (Join-Path $cmakeDir "CMake\bin\cmake.exe")) -and
+           (Test-Path -LiteralPath (Join-Path $cmakeDir "Ninja\ninja.exe"))
+}
+
+function Find-WindowsSdk {
+    $kits = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\Include"
+    if (-not (Test-Path -LiteralPath $kits)) { return $null }
+    $sdk = Get-ChildItem -LiteralPath $kits -Directory -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^10\.0\.(\d+)\.\d+$' -and [int]$Matches[1] -ge 26100 } |
+        Sort-Object Name -Descending | Select-Object -First 1
+    if ($sdk) { return $sdk.Name }
+    return $null
+}
+
+function Test-VulkanSdk {
+    return [bool]($env:VULKAN_SDK -and (Test-Path -LiteralPath (Join-Path $env:VULKAN_SDK "Bin\spirv-val.exe")))
+}
+
+function Test-DotNet8 {
+    if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { return $false }
+    return (Invoke-Quiet "dotnet" @("--list-sdks")).Text -match '(?m)^([89]|\d{2,})\.'
+}
+
+function Test-Submodule {
+    return Test-Path -LiteralPath (Join-Path $Root "third_party\rpf9-explorer\*")
+}
+
+# llvm-mc: путь, есть ли у него цель AMDGPU, и задан ли он командой (например, через WSL), которую не проверить.
+function Find-LlvmMc {
+    $mc = $env:LLVM_MC
+    if (-not $mc) {
+        $command = Get-Command llvm-mc -ErrorAction SilentlyContinue
+        if ($command) { $mc = $command.Source }
+    }
+    if (-not $mc) { return @{ Path = ""; Amdgpu = $false; Command = $false } }
+    if (-not (Test-Path -LiteralPath $mc)) { return @{ Path = $mc; Amdgpu = $false; Command = $true } }
+    $amdgpu = (Invoke-Quiet $mc @("--version")).Text -match "amdgcn"
+    return @{ Path = $mc; Amdgpu = $amdgpu; Command = $false }
 }
 
 function Find-CTest {
@@ -167,7 +237,7 @@ function Find-Built([string]$Name) {
 function Get-Loader {
     $loader = Find-Built "dstnrt.exe"
     if (-not $loader) {
-        Write-Missing "Загрузчик dstnrt.exe ещё не собран" "Сначала выполните пункт 2 «Собрать загрузчик»."
+        Write-Missing "Загрузчик dstnrt.exe ещё не собран" "Сначала выполните пункт 3 «Собрать загрузчик»."
     }
     return $loader
 }
@@ -187,33 +257,23 @@ function Step-Check {
         if ($freeGb -ge 40) { Write-Ok "Свободно на диске $($drive.Name): $freeGb ГБ" }
         else { Write-Optional "Свободно на диске $($drive.Name): $freeGb ГБ" "Для загрузчика хватит, для шейдеров нужно около 30 ГБ, для полной сборки — около 400 ГБ." }
     }
+    if (Get-Command winget -ErrorAction SilentlyContinue) { Write-Ok "winget (для автоматической установки)" }
+    else { Write-Optional "winget не найден" "Без него пункт 2 ничего не поставит: установите «App Installer» из Microsoft Store." }
 
     Write-Log ""
-    Write-Log "Для загрузчика dstnrt.exe и тестовой игры (пункты 2–5):"
+    Write-Log "Для загрузчика dstnrt.exe и тестовой игры (пункты 3–6):"
     $vs = Find-VisualStudio
     if ($vs) { Write-Ok "Visual Studio с C++ x64: $vs" }
-    else { Write-Missing "Visual Studio 2022 с нагрузкой «Desktop development with C++»" "https://visualstudio.microsoft.com/downloads/ (бесплатная Community подходит)."; $required++ }
-    if ($vs) {
-        $cmakeDir = Join-Path $vs "Common7\IDE\CommonExtensions\Microsoft\CMake"
-        if ((Test-Path -LiteralPath (Join-Path $cmakeDir "CMake\bin\cmake.exe")) -and (Test-Path -LiteralPath (Join-Path $cmakeDir "Ninja\ninja.exe"))) {
-            Write-Ok "CMake и Ninja из Visual Studio"
-        } else {
-            Write-Optional "CMake и Ninja из Visual Studio не найдены" "Добавьте в Visual Studio Installer компонент «C++ CMake tools for Windows»: без него сборка обойдётся без тестов CTest и контроллеров."
-        }
-    }
-    $kits = Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\Include"
-    $sdk = $null
-    if (Test-Path -LiteralPath $kits) {
-        $sdk = Get-ChildItem -LiteralPath $kits -Directory -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match '^10\.0\.(\d+)\.\d+$' -and [int]$Matches[1] -ge 26100 } |
-            Sort-Object Name -Descending | Select-Object -First 1
-    }
-    if ($sdk) { Write-Ok "Windows SDK $($sdk.Name)" }
-    else { Write-Missing "Windows SDK 10.0.26100 или новее" "Visual Studio Installer → Изменить → Отдельные компоненты → Windows 11 SDK (10.0.26100)."; $required++ }
+    else { Write-Missing "Visual Studio 2022 с C++ (подойдут бесплатные Build Tools)" "Пункт 2 поставит Build Tools сам."; $required++ }
+    if (Test-VsCMake $vs) { Write-Ok "CMake и Ninja из Visual Studio" }
+    elseif ($vs) { Write-Missing "Компонент Visual Studio «C++ CMake tools for Windows»" "Пункт 2 добавит его в вашу Visual Studio."; $required++ }
+    $sdk = Find-WindowsSdk
+    if ($sdk) { Write-Ok "Windows SDK $sdk" }
+    else { Write-Missing "Windows SDK 10.0.26100 или новее" "Пункт 2 добавит его в Visual Studio."; $required++ }
 
     Write-Log ""
-    Write-Log "Для кадра на Vulkan и переведённых шейдеров (пункты 4, 7, 8):"
-    if ($env:VULKAN_SDK -and (Test-Path -LiteralPath (Join-Path $env:VULKAN_SDK "Bin\spirv-val.exe"))) {
+    Write-Log "Для кадра на Vulkan и переведённых шейдеров (пункты 5, 8, 9):"
+    if (Test-VulkanSdk) {
         Write-Ok "Vulkan SDK: $env:VULKAN_SDK"
         $vulkaninfo = Join-Path $env:VULKAN_SDK "Bin\vulkaninfo.exe"
         if (Test-Path -LiteralPath $vulkaninfo) {
@@ -222,44 +282,163 @@ function Step-Check {
             else { Write-Missing "vulkaninfo не нашёл ни одной видеокарты Vulkan" "Обновите драйвер видеокарты." }
         }
     } else {
-        Write-Optional "Vulkan SDK не найден (переменная VULKAN_SDK)" "https://vulkan.lunarg.com/ — после установки откройте Start-DSTN.bat заново."
+        Write-Optional "Vulkan SDK не найден (переменная VULKAN_SDK)" "Пункт 2 поставит его сам."
     }
 
     Write-Log ""
-    Write-Log "Для сборки порта из своей копии игры (пункты 6–8):"
+    Write-Log "Для сборки порта из своей копии игры (пункты 7–9):"
     $python = Find-Python
     if ($python) { Write-Ok ("Python: " + ($python -join " ")) }
-    else { Write-Missing "Python 3.12 или новее" "https://www.python.org/downloads/ — отметьте «Add python.exe to PATH»."; $required++ }
+    else { Write-Missing "Python 3.12 или новее" "Пункт 2 поставит его сам."; $required++ }
     if (Get-Command git -ErrorAction SilentlyContinue) { Write-Ok "Git" }
-    else { Write-Optional "Git не найден" "https://git-scm.com/download/win — нужен, чтобы докачать подмодуль third_party\rpf9-explorer." }
-    if (Test-Path -LiteralPath (Join-Path $Root "third_party\rpf9-explorer\*")) { Write-Ok "Подмодуль third_party\rpf9-explorer" }
-    else { Write-Optional "Подмодуль third_party\rpf9-explorer пуст" "git submodule update --init (нужен только для экспорта ресурсов)." }
-    $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
-    $sdks = if ($dotnet) { (Invoke-Quiet "dotnet" @("--list-sdks")).Text } else { "" }
-    if ($sdks -match '(?m)^([89]|\d{2,})\.') { Write-Ok ".NET SDK 8+" }
-    else { Write-Optional ".NET 8 SDK не найден" "https://dotnet.microsoft.com/download/dotnet/8.0 — нужен для экспорта ресурсов (rpf9dump)." }
-    $mc = $env:LLVM_MC
-    if (-not $mc) { $command = Get-Command llvm-mc -ErrorAction SilentlyContinue; if ($command) { $mc = $command.Source } }
-    if ($mc -and (Test-Path -LiteralPath $mc)) {
-        $version = (Invoke-Quiet $mc @("--version")).Text
-        if ($version -match "amdgcn") { Write-Ok "llvm-mc с целью AMDGPU: $mc" }
-        else { Write-Optional "llvm-mc без цели AMDGPU: $mc" "Соберите свой: powershell -File scripts\build_llvm_mc.ps1 (около 20–40 минут)." }
-    } elseif ($mc) {
-        Write-Optional "LLVM_MC задан командой: $mc" "Эту команду (например, через WSL) проверка не запускает."
-    } else {
-        Write-Optional "llvm-mc не найден" "Нужен для перевода шейдеров: powershell -File scripts\build_llvm_mc.ps1 или conda install -c conda-forge llvm-tools."
-    }
+    else { Write-Optional "Git не найден" "Пункт 2 поставит его сам; он нужен для подмодуля и для сборки llvm-mc." }
+    if (Test-Submodule) { Write-Ok "Подмодуль third_party\rpf9-explorer" }
+    else { Write-Optional "Подмодуль third_party\rpf9-explorer пуст" "Пункт 2 докачает его (нужен только для экспорта ресурсов)." }
+    if (Test-DotNet8) { Write-Ok ".NET SDK 8+" }
+    else { Write-Optional ".NET 8 SDK не найден" "Пункт 2 поставит его сам (нужен для экспорта ресурсов, rpf9dump)." }
+    $mc = Find-LlvmMc
+    if ($mc.Amdgpu) { Write-Ok "llvm-mc с целью AMDGPU: $($mc.Path)" }
+    elseif ($mc.Command) { Write-Optional "LLVM_MC задан командой: $($mc.Path)" "Эту команду (например, через WSL) проверка не запускает." }
+    elseif ($mc.Path) { Write-Optional "llvm-mc без цели AMDGPU: $($mc.Path)" "Пункт 2 соберёт подходящий (20–40 минут)." }
+    else { Write-Optional "llvm-mc не найден" "Нужен для перевода шейдеров; пункт 2 соберёт его (20–40 минут)." }
     if (Get-Command ffmpeg -ErrorAction SilentlyContinue) { Write-Ok "ffmpeg" }
     else { Write-Optional "ffmpeg не найден" "Необязательно: нужен только для звука XMA2 и --wav." }
 
-    Write-Result "Проверка компьютера" ($required -eq 0) ("Обязательного не хватает: $required.")
+    $note = "Обязательного не хватает: $required."
+    if ($required) { $note += " Запустите пункт 2 «Установить недостающее»." }
+    Write-Result "Проверка компьютера" ($required -eq 0) $note
     return ($required -eq 0)
 }
 
-# ---------------------------------------------------------------- шаги 2–5: загрузчик и тестовые игры
+# ---------------------------------------------------------------- шаг 2: автоматическая установка
+
+function Install-WithWinget([string]$Name, [string]$Id, [string]$Override = "") {
+    $arguments = @("install", "--id", $Id, "--exact", "--source", "winget",
+                   "--accept-package-agreements", "--accept-source-agreements")
+    if ($Override) { $arguments += @("--override", $Override) } else { $arguments += "--silent" }
+    Write-Log ""
+    Write-Log "--- $Name (winget: $Id)" Cyan
+    $code = Invoke-Logged "winget" $arguments
+    Update-SessionEnvironment
+    return $code
+}
+
+# Добавляет компоненты в уже установленную Visual Studio её собственным установщиком (нужны права администратора:
+# Windows покажет запрос UAC).
+function Add-VsComponents([string]$Vs) {
+    $setup = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\setup.exe"
+    if (-not (Test-Path -LiteralPath $setup)) {
+        Write-Missing "Установщик Visual Studio не найден: $setup" "Откройте Visual Studio Installer и добавьте компоненты вручную."
+        return -1
+    }
+    $arguments = @("modify", "--installPath", "`"$Vs`"", "--passive", "--norestart")
+    foreach ($component in $VsComponents) { $arguments += @("--add", $component) }
+    Write-Log ""
+    Write-Log "--- Компоненты Visual Studio (откроется окно установщика и запрос прав администратора)" Cyan
+    Write-Log ("> " + $setup + " " + ($arguments -join " ")) DarkGray
+    try {
+        $process = Start-Process -FilePath $setup -ArgumentList $arguments -Verb RunAs -Wait -PassThru
+        Write-Log "Установщик Visual Studio завершился с кодом $($process.ExitCode)."
+        return $process.ExitCode
+    } catch {
+        Write-Log "Не удалось запустить установщик Visual Studio: $($_.Exception.Message)" Red
+        return -1
+    }
+}
+
+function Step-Install {
+    Write-Title "Шаг 2. Установка недостающего"
+    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
+        Write-Missing "winget не найден" "Установите «App Installer» из Microsoft Store: https://apps.microsoft.com/detail/9NBLGGH4NNS1 — и запустите пункт 2 снова."
+        Write-Result "Установка" $false
+        return $false
+    }
+
+    $vsOverride = "--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools " +
+                  (($VsComponents | ForEach-Object { "--add $_" }) -join " ")
+    $plan = New-Object System.Collections.Generic.List[object]
+    if (-not (Find-Python)) {
+        $plan.Add(@{ Name = "Python 3.12"; Id = "Python.Python.3.12"
+                     Override = "/quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1" })
+    }
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { $plan.Add(@{ Name = "Git"; Id = "Git.Git"; Override = "" }) }
+    $vs = Find-VisualStudio
+    if (-not $vs) {
+        $plan.Add(@{ Name = "Visual Studio 2022 Build Tools (C++, Windows SDK 26100, CMake)"
+                     Id = "Microsoft.VisualStudio.2022.BuildTools"; Override = $vsOverride })
+    } elseif (-not (Find-WindowsSdk) -or -not (Test-VsCMake $vs)) {
+        $plan.Add(@{ Name = "Компоненты Visual Studio: Windows SDK 26100 и C++ CMake tools"; Id = ""; Override = ""; Vs = $vs })
+    }
+    if (-not (Test-VulkanSdk)) { $plan.Add(@{ Name = "Vulkan SDK"; Id = "KhronosGroup.VulkanSDK"; Override = "" }) }
+    if (-not (Test-DotNet8)) { $plan.Add(@{ Name = ".NET 8 SDK"; Id = "Microsoft.DotNet.SDK.8"; Override = "" }) }
+
+    $needSubmodule = -not (Test-Submodule)
+    $needLlvmMc = -not (Find-LlvmMc).Amdgpu -and -not (Find-LlvmMc).Command
+    $needFfmpeg = -not (Get-Command ffmpeg -ErrorAction SilentlyContinue)
+
+    if ($plan.Count -eq 0 -and -not $needSubmodule -and -not $needLlvmMc -and -not $needFfmpeg) {
+        Write-Result "Установка" $true "Всё нужное уже установлено."
+        return $true
+    }
+    if ($plan.Count) {
+        Write-Log "Будет установлено через winget (с официальных источников):"
+        foreach ($item in $plan) { Write-Log "  • $($item.Name)" }
+        Write-Log "Установка принимает лицензии этих программ (Microsoft, Python, Git, Khronos). Windows может спросить"
+        Write-Log "права администратора для каждой. Visual Studio Build Tools скачивает несколько гигабайт."
+        if (-not (Confirm-Yes "Установить?")) {
+            Write-Log "Установка отменена."
+            $plan.Clear()
+        }
+    }
+
+    $failed = 0
+    foreach ($item in $plan) {
+        if ($item.Id) { $code = Install-WithWinget $item.Name $item.Id $item.Override }
+        else { $code = Add-VsComponents $item.Vs }
+        Update-SessionEnvironment
+        if ($code -ne 0) { Write-Log "  Код выхода $($code) — проверю ниже, установилось ли." DarkYellow }
+    }
+
+    if ($needSubmodule -and (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Log ""
+        Write-Log "--- Подмодуль third_party\rpf9-explorer" Cyan
+        $null = Invoke-Logged "git" @("submodule", "update", "--init", "--recursive") $Root
+    }
+
+    if ($needLlvmMc) {
+        Write-Log ""
+        Write-Log "llvm-mc с целью AMDGPU нужен для перевода шейдеров. Готового для Windows нет: он собирается из исходников"
+        Write-Log "LLVM (около 2 ГБ временного места, 20–40 минут). Нужны Git, Python и Visual Studio из списка выше."
+        if ((Get-Command git -ErrorAction SilentlyContinue) -and (Find-Python) -and (Find-VisualStudio)) {
+            if (Confirm-Yes "Собрать llvm-mc сейчас?") {
+                $powershell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+                $null = Invoke-Logged $powershell @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+                                                   (Join-Path $PSScriptRoot "build_llvm_mc.ps1")) $Root
+                Update-SessionEnvironment
+            }
+        } else {
+            Write-Log "Сначала должны установиться Git, Python и Visual Studio; затем запустите пункт 2 ещё раз." DarkYellow
+        }
+    }
+
+    if ($needFfmpeg -and (Confirm-Yes "Установить необязательный ffmpeg (звук XMA2 и --wav)?")) {
+        $null = Install-WithWinget "ffmpeg" "Gyan.FFmpeg"
+    }
+
+    Write-Log ""
+    Write-Log "Проверяю, что получилось:"
+    $ok = Step-Check
+    if (-not $ok) {
+        Write-Log "Если программа только что установилась, но здесь её нет, закройте окно и запустите Start-DSTN.bat заново:" Yellow
+        Write-Log "некоторые установщики меняют PATH так, что это видно только новым окнам." Yellow
+    }
+    return $ok
+}
+
+# ---------------------------------------------------------------- шаги 3–6: загрузчик и тестовые игры
 
 function Step-Build {
-    Write-Title "Шаг 2. Сборка загрузчика dstnrt.exe"
+    Write-Title "Шаг 3. Сборка загрузчика dstnrt.exe"
     Write-Log "Первая сборка идёт 10–20 минут, следующие — быстрее."
     $powershell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
     $code = Invoke-Logged $powershell @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
@@ -271,12 +450,12 @@ function Step-Build {
 }
 
 function Step-TestGame {
-    Write-Title "Шаг 3. Тестовая игра tiny_game"
+    Write-Title "Шаг 4. Тестовая игра tiny_game"
     $loader = Get-Loader
     $game = Find-Built "tiny_game.exe"
     if (-not $loader) { return $false }
     if (-not $game) {
-        Write-Missing "tiny_game.exe не собран" "Нужны CMake и Ninja из Visual Studio (компонент «C++ CMake tools for Windows»), затем пункт 2."
+        Write-Missing "tiny_game.exe не собран" "Нужны CMake и Ninja из Visual Studio (пункт 2), затем пункт 3."
         Write-Result "Тестовая игра" $false
         return $false
     }
@@ -301,12 +480,12 @@ function Step-TestGame {
 }
 
 function Step-Frame {
-    Write-Title "Шаг 4. Тестовый кадр на Vulkan (tiny_frame)"
+    Write-Title "Шаг 5. Тестовый кадр на Vulkan (tiny_frame)"
     $loader = Get-Loader
     if (-not $loader) { return $false }
     $frame = Find-Built "tiny_frame.exe"
     if (-not $frame) {
-        Write-Missing "tiny_frame.exe не собран" "Он собирается, когда при сборке (пункт 2) найден Vulkan SDK."
+        Write-Missing "tiny_frame.exe не собран" "Он собирается, когда при сборке (пункт 3) найден Vulkan SDK."
         Write-Result "Кадр на Vulkan" $false
         return $false
     }
@@ -323,14 +502,14 @@ function Step-Frame {
 }
 
 function Step-Tests {
-    Write-Title "Шаг 5. Все тесты загрузчика (CTest)"
+    Write-Title "Шаг 6. Все тесты загрузчика (CTest)"
     $ctest = Find-CTest
     if (-not $ctest) {
-        Write-Missing "ctest не найден" "Добавьте в Visual Studio компонент «C++ CMake tools for Windows» и пересоберите (пункт 2)."
+        Write-Missing "ctest не найден" "Пункт 2 добавит в Visual Studio компонент «C++ CMake tools for Windows»; затем пункт 3."
         return $false
     }
     if (-not (Test-Path -LiteralPath (Join-Path $BuildDir "CTestTestfile.cmake"))) {
-        Write-Missing "В runtime\build нет тестов CTest" "Сначала пункт 2 (сборка через CMake)."
+        Write-Missing "В runtime\build нет тестов CTest" "Сначала пункт 3 (сборка через CMake)."
         return $false
     }
     $jobs = [Math]::Max(1, [int]([Environment]::ProcessorCount / 2))
@@ -340,7 +519,7 @@ function Step-Tests {
     return ($code -eq 0)
 }
 
-# ---------------------------------------------------------------- шаги 6–8: своя копия игры
+# ---------------------------------------------------------------- шаги 7–9: своя копия игры
 
 function Get-GameFolder {
     $saved = ""
@@ -359,14 +538,14 @@ function Get-GameFolder {
 }
 
 function Step-Find {
-    Write-Title "Шаг 6. Поиск копий игры на этом ПК"
+    Write-Title "Шаг 7. Поиск копий игры на этом ПК"
     $code = Invoke-Python @("make_game.py", "--find")
     Write-Result "Поиск копий" ($code -eq 0) ""
     return ($code -eq 0)
 }
 
 function Step-GameCheck {
-    Write-Title "Шаг 7. Проверка своей копии игры"
+    Write-Title "Шаг 8. Проверка своей копии игры"
     $folder = Get-GameFolder
     if (-not $folder) { return $false }
     $code = Invoke-Python @("make_game.py", "--check", "--game", $folder)
@@ -376,7 +555,7 @@ function Step-GameCheck {
 }
 
 function Step-Port {
-    Write-Title "Шаг 8. Сборка порта из своей копии"
+    Write-Title "Шаг 9. Сборка порта из своей копии"
     Write-Log "Стадии check, shaders и runtime: около 30 ГБ места и несколько часов на перевод шейдеров."
     Write-Log "Полная сборка с ресурсами (assets): около 400 ГБ. Прерванная сборка продолжается с места остановки."
     $folder = Get-GameFolder
@@ -392,13 +571,14 @@ function Step-Port {
 
 $Steps = [ordered]@{
     "1" = @{ Key = "check";      Title = "Проверить компьютер (что установлено)";             Run = { Step-Check } }
-    "2" = @{ Key = "build";      Title = "Собрать загрузчик dstnrt.exe";                      Run = { Step-Build } }
-    "3" = @{ Key = "testgame";   Title = "Запустить тестовую игру (tiny_game)";               Run = { Step-TestGame } }
-    "4" = @{ Key = "frame";      Title = "Тестовый кадр на Vulkan (tiny_frame)";              Run = { Step-Frame } }
-    "5" = @{ Key = "tests";      Title = "Все тесты загрузчика (CTest)";                      Run = { Step-Tests } }
-    "6" = @{ Key = "find";       Title = "Найти копии игры на этом ПК";                       Run = { Step-Find } }
-    "7" = @{ Key = "game-check"; Title = "Проверить свою копию игры";                         Run = { Step-GameCheck } }
-    "8" = @{ Key = "port";       Title = "Собрать порт из копии (шейдеры и загрузчик)";      Run = { Step-Port } }
+    "2" = @{ Key = "install";    Title = "Установить недостающее автоматически";              Run = { Step-Install } }
+    "3" = @{ Key = "build";      Title = "Собрать загрузчик dstnrt.exe";                      Run = { Step-Build } }
+    "4" = @{ Key = "testgame";   Title = "Запустить тестовую игру (tiny_game)";               Run = { Step-TestGame } }
+    "5" = @{ Key = "frame";      Title = "Тестовый кадр на Vulkan (tiny_frame)";              Run = { Step-Frame } }
+    "6" = @{ Key = "tests";      Title = "Все тесты загрузчика (CTest)";                      Run = { Step-Tests } }
+    "7" = @{ Key = "find";       Title = "Найти копии игры на этом ПК";                       Run = { Step-Find } }
+    "8" = @{ Key = "game-check"; Title = "Проверить свою копию игры";                         Run = { Step-GameCheck } }
+    "9" = @{ Key = "port";       Title = "Собрать порт из копии (шейдеры и загрузчик)";      Run = { Step-Port } }
 }
 
 Write-Log "DSTN (ДАСТАН) — стартовое меню для Windows. $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" Cyan
@@ -415,11 +595,13 @@ try {
             Write-Host ""
             Write-Host "  DSTN — ДАСТАН · что делаем?" -ForegroundColor Cyan
             foreach ($number in $Steps.Keys) { Write-Host ("   {0}  {1}" -f $number, $Steps[$number].Title) }
-            Write-Host "   9  Открыть папку с журналами"
+            Write-Host "  10  Открыть папку с журналами"
             Write-Host "   0  Выход"
-            $choice = (Read-Host "Номер").Trim()
+            $choice = Read-Host "Номер"
+            if ($null -eq $choice) { break }
+            $choice = $choice.Trim()
             if ($choice -eq "0" -or $choice -eq "") { break }
-            if ($choice -eq "9") { Start-Process explorer.exe $LogDir; continue }
+            if ($choice -eq "10") { Start-Process explorer.exe $LogDir; continue }
             if (-not $Steps.Contains($choice)) { Write-Host "Нет такого пункта: $choice" -ForegroundColor Yellow; continue }
             $null = & $Steps[$choice].Run
         }

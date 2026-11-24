@@ -19,7 +19,7 @@ env:
 jobs:
   change-scope:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 5
     outputs:
       docs-only: ${{ steps.paths.outputs.docs-only }}
@@ -28,6 +28,9 @@ jobs:
         with:
           fetch-depth: 2
           persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
       - name: Check whether only documentation changed
         id: paths
         shell: pwsh
@@ -51,10 +54,11 @@ jobs:
       # tracked files. tests/test_ci_registration.py fails when a tests/test_docs_*.py is not run here.
       - name: Check documentation when only documentation changed
         if: steps.paths.outputs.docs-only == 'true'
+        shell: bash
         run: |
           for t in tests/test_docs_*.py tests/test_i18n_index.py; do
             echo "== $t"
-            python3 -I "$t" || exit 1
+            python -I "$t" || exit 1
           done
 
   check:
@@ -117,11 +121,13 @@ jobs:
           python -I tests/test_ttpf_assets.py
       - name: Test rpf9dump diagnostics
         run: dotnet run --project tests/Rpf9DumpDiagnostics/Rpf9DumpDiagnostics.csproj -c Release
+  # DSTN's CI runs on Windows only. conda-forge's Windows LLVM has the AMDGPU target (LLVM's own Windows release does
+  # not), and its SPIRV-Tools give spirv-as / spirv-val; the runner image ships Miniconda in CONDA.
   translator-tests:
     needs: change-scope
     if: ${{ !cancelled() && needs.change-scope.outputs.docs-only != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -129,24 +135,20 @@ jobs:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: tests/requirements.txt
-      - name: Install llvm-mc (LLVM 21) and spirv-tools
-        shell: bash
+      - name: Install llvm-mc and SPIRV-Tools (conda-forge)
+        shell: pwsh
         run: |
-          # The signing key is checked against apt.llvm.org's published fingerprint before apt trusts it.
-          key=$(mktemp)
-          curl -fsSL -o "$key" https://apt.llvm.org/llvm-snapshot.gpg.key
-          python3 -I scripts/check_apt_key.py "$key" 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
-          sudo gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg "$key"
-          echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] https://apt.llvm.org/noble/ llvm-toolchain-noble-21 main" | sudo tee /etc/apt/sources.list.d/llvm-21.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends llvm-21 spirv-tools
-          pip install -r tests/requirements.txt
-          LLVM_MC=/usr/lib/llvm-21/bin/llvm-mc
-          echo "LLVM_MC=$LLVM_MC" >> "$GITHUB_ENV"
-          version_out=$("$LLVM_MC" --version)
-          printf '%s\n' "$version_out"
-          grep -q 'LLVM version 21\.' <<< "$version_out"
-          grep -q 'amdgcn' <<< "$version_out"
+          $prefix = Join-Path $env:RUNNER_TEMP "dstn-tools"
+          & (Join-Path $env:CONDA "Scripts\conda.exe") create --yes --quiet --prefix $prefix --override-channels -c conda-forge "llvm-tools>=21" spirv-tools
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $bin = Join-Path $prefix "Library\bin"
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "LLVM_MC=$(Join-Path $bin 'llvm-mc.exe')" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          $version = & (Join-Path $bin "llvm-mc.exe") --version | Out-String
+          $version
+          if ($version -notmatch "amdgcn") { throw "conda-forge's llvm-mc has no AMDGPU target" }
+          & (Join-Path $bin "spirv-val.exe") --version
+          python -m pip install -r tests/requirements.txt
       - name: Translator tests
         shell: bash
         run: |
@@ -159,107 +161,58 @@ jobs:
             fi
           done < <(find tests -path 'tests/semantic' -prune -o -type f -name 'test_*.py' -print | LC_ALL=C sort)
           python -m pytest "${pytest_files[@]}" -q
+      # The check job runs the standard-library loop before anything is installed, so the spirv-val checks
+      # (test_split_big_switch, test_image_load_typed...) and the numpy paths skip there. This runs the same loop with
+      # SPIRV-Tools and numpy installed, so those checks run somewhere.
+      - name: Tests (standard-library loop with SPIRV-Tools and numpy)
+        shell: bash
+        run: |
+          failed=()
+          while IFS= read -r t; do
+            if grep -Eq "$PYTEST_FILE_MARKERS" "$t" || ! grep -q '__main__' "$t"; then
+              continue
+            fi
+            echo "== $t"
+            python -I "$t" || failed+=("$t")
+          done < <(find tests -path 'tests/semantic' -prune -o -type f -name 'test_*.py' -print | LC_ALL=C sort)
+          if (( ${#failed[@]} )); then
+            for t in "${failed[@]}"; do echo "::error file=$t::$t failed"; done
+            exit 1
+          fi
+
   semantic-tests:
     needs: change-scope
     if: ${{ !cancelled() && needs.change-scope.outputs.docs-only != 'true' }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    strategy:
-      matrix:
-        # Pull requests run the Linux leg only: in 914 sampled pull request runs the Windows leg never failed while the
-        # Linux leg passed, and it took about 14% of the account's runner time. Pushes to main and workflow_dispatch
-        # run both legs.
-        os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["windows-latest", "ubuntu-latest"]') }}
+    runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       # Some semantic tests assemble and validate the translator's output with spirv-as / spirv-val and skip without
-      # them (test_fma_khr, test_bary_fallback, test_image_coherent...). The runner images have neither, so a skip
-      # here reads as a pass. The Linux leg installs SPIRV-Tools and DSTN_REQUIRE_SPIRV_TOOLS=1 makes
-      # tests/semantic/test_spirv_tools_required.py fail when they are missing, so those tests cannot go quiet again.
-      # The Windows leg has no SPIRV-Tools and still skips them.
-      - name: Install SPIRV-Tools
-        if: runner.os == 'Linux'
-        shell: bash
+      # them (test_fma_khr, test_bary_fallback, test_image_coherent...). The runner image has neither, so a skip here
+      # would read as a pass: this job installs SPIRV-Tools from conda-forge, and DSTN_REQUIRE_SPIRV_TOOLS=1 makes
+      # tests/semantic/test_spirv_tools_required.py fail when they are missing, so those tests cannot go quiet.
+      - name: Install SPIRV-Tools (conda-forge)
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends spirv-tools
-          spirv-as --version
-          spirv-val --version
+          $prefix = Join-Path $env:RUNNER_TEMP "dstn-spirv"
+          & (Join-Path $env:CONDA "Scripts\conda.exe") create --yes --quiet --prefix $prefix --override-channels -c conda-forge spirv-tools
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $bin = Join-Path $prefix "Library\bin"
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          & (Join-Path $bin "spirv-as.exe") --version
+          & (Join-Path $bin "spirv-val.exe") --version
       - name: Translator semantic tests
         env:
-          DSTN_REQUIRE_SPIRV_TOOLS: ${{ runner.os == 'Linux' && '1' || '0' }}
+          DSTN_REQUIRE_SPIRV_TOOLS: "1"
         run: python -I scripts/run_semantic_tests.py tests/semantic -v
-
-  # The Python suites on an Apple Silicon Mac: the standard-library loop of the check job, the translator semantic
-  # tests and the pytest files of the translator-tests job, with Homebrew's llvm-mc and SPIRV-Tools. macos-26, not
-  # macos-15: the Homebrew bottles cover Sequoia and later, but the runtime needs Xcode 26's libc++ (runtime.yml).
-  macos-python:
-    needs: change-scope
-    if: ${{ !cancelled() && needs.change-scope.outputs.docs-only != 'true' }}
-    runs-on: macos-26
-    timeout-minutes: 20
-    env:
-      HOMEBREW_NO_AUTO_UPDATE: "1"
-      HOMEBREW_NO_INSTALL_CLEANUP: "1"
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: tests/requirements.txt
-      - name: Python tools compile
-        run: python -m compileall -q make_game.py tools tests
-      - name: make_game.py help
-        run: python -I make_game.py --help
-      # Before anything is installed, as in the check job, so these files stay standard library only. The semantic
-      # suite runs alongside the loop, on another of the runner's three cores; together they take about 6 minutes.
-      - name: Translator semantic tests and tests (standard library only, no game data)
-        shell: bash
-        run: |
-          python -m unittest discover -s tests/semantic > "$RUNNER_TEMP/semantic.log" 2>&1 &
-          semantic=$!
-          while IFS= read -r t; do
-            if grep -Eq "$PYTEST_FILE_MARKERS" "$t" || ! grep -q '__main__' "$t"; then
-              continue
-            fi
-            echo "== $t"
-            python -I "$t" || exit 1
-          done < <(find tests -path 'tests/semantic' -prune -o -type f -name 'test_*.py' -print | LC_ALL=C sort)
-          status=0
-          wait "$semantic" || status=$?
-          echo "== tests/semantic"
-          cat "$RUNNER_TEMP/semantic.log"
-          exit "$status"
-      - name: Install llvm-mc and SPIRV-Tools
-        run: |
-          brew install llvm spirv-tools
-          pip install -r tests/requirements.txt
-          LLVM_MC="$(brew --prefix llvm)/bin/llvm-mc"  # keg-only: not on PATH
-          echo "LLVM_MC=$LLVM_MC" >> "$GITHUB_ENV"
-          "$LLVM_MC" --version | grep -E 'LLVM version|amdgcn'
-      - name: Translator tests (pytest)
-        shell: bash
-        run: |
-          pytest_files=()
-          while IFS= read -r t; do
-            if grep -Eq "$PYTEST_FILE_MARKERS" "$t" || ! grep -q '__main__' "$t"; then
-              pytest_files+=("$t")
-            elif [[ "$t" == tests/test_tex_headers.py ]]; then
-              pytest_files+=("$t::TestTextureDescriptorParsing::test_stdlib_qword_scanner_edge_cases_and_parity")
-            fi
-          done < <(find tests -path 'tests/semantic' -prune -o -type f -name 'test_*.py' -print | LC_ALL=C sort)
-          python -m pytest "${pytest_files[@]}" -q
 
   viewer-tests:
     needs: change-scope
     if: ${{ !cancelled() && needs.change-scope.outputs.docs-only != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -267,36 +220,5 @@ jobs:
         with:
           node-version: "24"
       - name: Viewer chunk streaming (synthetic, no browser or game data)
+        shell: bash
         run: node --test tests/test_*.cjs
-
-  # The check job runs the standard-library loop on Windows, which has no SPIRV-Tools or numpy: the spirv-val checks
-  # (test_split_big_switch, test_image_load_typed...), the numpy paths and the POSIX-only tests skip there. This job
-  # runs the same loop on Linux with them installed, so those tests run somewhere.
-  stdlib-tests-linux:
-    needs: change-scope
-    if: ${{ !cancelled() && needs.change-scope.outputs.docs-only != 'true' }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: tests/requirements.txt
-      - name: Install SPIRV-Tools and numpy
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends spirv-tools
-          pip install -r tests/requirements.txt
-      - name: Tests (standard library only, Linux)
-        shell: bash
-        run: |
-          while IFS= read -r t; do
-            if grep -Eq "$PYTEST_FILE_MARKERS" "$t" || ! grep -q '__main__' "$t"; then
-              continue
-            fi
-            echo "== $t"
-            python -I "$t" || exit 1
-          done < <(find tests -path 'tests/semantic' -prune -o -type f -name 'test_*.py' -print | LC_ALL=C sort)

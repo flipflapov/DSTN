@@ -14,7 +14,7 @@ permissions: {}
 
 jobs:
   no-game-data:
-    runs-on: ubuntu-24.04
+    runs-on: windows-latest
     timeout-minutes: 5
     permissions:
       contents: read
@@ -24,6 +24,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - name: No game data tracked
+        shell: bash
         run: |
           bad=$(git ls-files -z | grep -ziE '\.(rpf|ttpf|xvd|msixvc|dxbc|fssm|spv|spvasm|dds|bk2|awc|r9modeldata|obj|glb|ogg|wav|exe|dll)$' | tr '\0' '\n' || true)
           if [ -n "$bad" ]; then
@@ -31,5 +32,8 @@ jobs:
             echo "$bad"
             exit 1
           fi
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
       - name: No game data under another name
-        run: python3 -I scripts/check_no_game_data.py
+        run: python -I scripts/check_no_game_data.py

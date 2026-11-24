@@ -3,7 +3,7 @@
     python -I tests/test_dstn_start.py
 
 Static checks only, so they run on any OS (no PowerShell, compiler or game files): the launcher stays ASCII for
-cmd.exe, the menu script keeps exactly one UTF-8 BOM (without it Windows PowerShell 5.1 reads the Russian text as
+cmd.exe, no "$name:" string trips the parser, the menu script keeps exactly one UTF-8 BOM (without it Windows PowerShell 5.1 reads the Russian text as
 ANSI), every `-Step` name has a menu entry and a function, external probes go through the one helper that lowers
 ErrorActionPreference (under Stop, Windows PowerShell 5.1 stops on a native program's first stderr line), and no
 PowerShell 7-only operator slips in. Also: scripts/build_runtime.ps1 keeps one BOM and its -PipeOutput launch.
@@ -75,6 +75,16 @@ class StartMenuTest(unittest.TestCase):
         for number, line in enumerate(code_lines(text), 1):
             with self.subTest(line=number):
                 self.assertNotRegex(line, r"\?\?|\?\.|\s&&\s|\s\|\|\s|\?\s*[^:]+\s:\s")
+
+    def test_no_variable_is_followed_by_a_colon_inside_a_string(self):
+        # "$code: ..." parses as a scope-qualified name ($scope:name) and is a syntax error; "$($code): ..." is not.
+        text = read_bytes(MENU)[len(BOM):].decode("utf-8")
+        for number, line in enumerate(text.splitlines(), 1):
+            if line.lstrip().startswith("#"):
+                continue
+            for string in re.findall(r'"(?:[^"`]|`.)*"', line):
+                with self.subTest(line=number):
+                    self.assertNotRegex(string, r"\$(?!env:|script:|global:|using:)[A-Za-z_]\w*:")
 
     def test_python_runs_isolated_in_utf8_mode(self):
         text = read_bytes(MENU)[len(BOM):].decode("utf-8")

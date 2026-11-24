@@ -67,7 +67,7 @@ class CMakeListsUsesTheModuleTest(unittest.TestCase):
     def test_ci_requires_vulkan(self):
         ci = (ROOT / ".github" / "workflows" / "runtime.yml").read_text(encoding="utf-8")
         configures = re.findall(r"cmake -S runtime -B runtime/build.*?(?=\n\s*- name:)", ci, re.S)
-        self.assertGreaterEqual(len(configures), 2)
+        self.assertGreaterEqual(len(configures), 1)   # DSTN's CI builds the runtime on Windows only
         for c in configures:
             self.assertIn("-DDSTN_REQUIRE_VULKAN=ON", c)
 
