@@ -1,14 +1,14 @@
 ﻿# DSTN (ДАСТАН): стартовое меню для Windows.
 #
 # Запуск: двойной щелчок по Start-DSTN.bat в корне репозитория. Один шаг без меню: Start-DSTN.bat <шаг>, где шаг —
-# check, install, build, testgame, frame, tests, find, game-check или port.
+# check, install, build, testgame, frame, tests, find, game-check, port или victory.
 #
 # Каждый запуск пишет всё, что вывели шаги, в logs\dstn-<дата>.log. Этот лог можно присылать разработчику: в нём
 # только вывод инструментов. Файлы игры, извлечённые ресурсы и шейдеры никуда не выкладывайте.
 #
 # Файл сохранён в UTF-8 с BOM: без BOM Windows PowerShell 5.1 читает его как ANSI и портит русский текст.
 param(
-    [ValidateSet("", "check", "install", "build", "testgame", "frame", "tests", "find", "game-check", "port")]
+    [ValidateSet("", "check", "install", "build", "testgame", "frame", "tests", "find", "game-check", "port", "victory")]
     [string]$Step = ""
 )
 Set-StrictMode -Version 2
@@ -24,6 +24,12 @@ $GameFolderFile = Join-Path $LogDir "game_folder.txt"
 $script:Log = [System.IO.StreamWriter]::new($LogPath, $true, [System.Text.UTF8Encoding]::new($false))
 $script:Log.AutoFlush = $true
 $script:LastOutput = @()
+
+# VIctory (github.com/Marvisak/VIctory, GPL-3.0-or-later) — родственный загрузчик на Rust; пункт 10 собирает его
+# вне репозитория DSTN. Коммит закреплён: новую версию берите осознанно, поменяв его здесь.
+$VictoryRepo = "https://github.com/Marvisak/VIctory"
+$VictoryCommit = "ffe310eb2098e52169f4c44db5ffdabf43a72622"
+$VictoryDir = Join-Path $env:LOCALAPPDATA "DSTN\victory"
 
 # Компоненты Visual Studio, без которых не собрать загрузчик: компилятор C++ x64, Windows SDK 10.0.26100 (корневые
 # сигнатуры версии 1.2) и CMake с Ninja («C++ CMake tools for Windows»).
@@ -567,6 +573,105 @@ function Step-Port {
     return ($code -eq 0)
 }
 
+# ---------------------------------------------------------------- шаг 10: VIctory
+
+# Исполняемый файл игры в папке: game_scarlett_master.exe (expected_exe в game/xbox-1.0.2.1.json), иначе
+# единственный .exe в корне папки, иначе путь, который назовёт пользователь.
+function Find-TitleExe([string]$Folder) {
+    $known = Join-Path $Folder "game_scarlett_master.exe"
+    if (Test-Path -LiteralPath $known) { return $known }
+    $exes = @(Get-ChildItem -LiteralPath $Folder -Filter *.exe -File -ErrorAction SilentlyContinue)
+    if ($exes.Count -eq 1) { return $exes[0].FullName }
+    if ($exes.Count -gt 1) {
+        Write-Log "В папке игры несколько .exe:"
+        foreach ($exe in $exes) { Write-Log "  $($exe.Name)" }
+        $name = Read-Host "Какой запускать (имя файла)"
+        if ($name) {
+            $chosen = Join-Path $Folder $name.Trim().Trim('"')
+            if (Test-Path -LiteralPath $chosen) { return $chosen }
+        }
+    }
+    return $null
+}
+
+function Step-Victory {
+    Write-Title "Шаг 10. Запуск через VIctory"
+    Write-Log "VIctory — отдельный проект (github.com/Marvisak/VIctory, GPL-3.0-or-later) с собственным загрузчиком на Rust."
+    Write-Log "По его README игра доходит до меню и загрузки мира, а в самом мире рендеринг пока не работает."
+    Write-Log "Он ставится рядом, в $VictoryDir (вне репозитория DSTN), версия $($VictoryCommit.Substring(0, 7))."
+    Write-Log "Как и DSTN, он запускает только исполняемый файл вашей копии игры и ничего не расшифровывает."
+    if (-not (Confirm-Yes "Скачать и собрать VIctory?")) { return $false }
+
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Missing "Git не найден" "Пункт 2 «Установить недостающее» поставит его."
+        Write-Result "VIctory" $false
+        return $false
+    }
+    if (-not (Find-VisualStudio)) {
+        Write-Missing "Visual Studio с C++ не найдена" "Rust для Windows собирает через компоновщик MSVC; пункт 2 поставит Build Tools."
+        Write-Result "VIctory" $false
+        return $false
+    }
+    if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+        Write-Log "Для сборки VIctory нужен Rust; нужную версию (rust-toolchain.toml VIctory) rustup скачает сам."
+        if (Confirm-Yes "Установить Rust через winget (Rustlang.Rustup)?") {
+            $null = Install-WithWinget "Rust (rustup)" "Rustlang.Rustup"
+        }
+        if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) {
+            Write-Missing "cargo не найден" "Если Rust только что установился, закройте окно и запустите Start-DSTN.bat заново."
+            Write-Result "VIctory" $false
+            return $false
+        }
+    }
+
+    # Исходники закреплённого коммита: неглубокий fetch одного коммита в свою папку.
+    if (-not (Test-Path -LiteralPath (Join-Path $VictoryDir ".git"))) {
+        New-Item -ItemType Directory -Force $VictoryDir | Out-Null
+        $null = Invoke-Logged "git" @("init", "-q", $VictoryDir)
+        $null = Invoke-Logged "git" @("-C", $VictoryDir, "remote", "add", "origin", $VictoryRepo)
+    }
+    $code = Invoke-Logged "git" @("-C", $VictoryDir, "fetch", "--depth", "1", "origin", $VictoryCommit)
+    if ($code -eq 0) { $code = Invoke-Logged "git" @("-C", $VictoryDir, "checkout", "-q", "--force", "FETCH_HEAD") }
+    if ($code -ne 0) {
+        Write-Result "VIctory" $false "Не удалось скачать исходники (код $($code))."
+        return $false
+    }
+
+    Write-Log "Сборка VIctory: первая идёт 5–15 минут."
+    $code = Invoke-Logged "cargo" @("build", "--release", "-p", "victory") $VictoryDir
+    $victory = Join-Path $VictoryDir "target\release\victory.exe"
+    if ($code -ne 0 -or -not (Test-Path -LiteralPath $victory)) {
+        Write-Result "VIctory" $false "Сборка не удалась (код $($code))."
+        return $false
+    }
+    Write-Ok "VIctory собран: $victory"
+
+    $folder = Get-GameFolder
+    if (-not $folder) { Write-Result "VIctory" $false; return $false }
+    $title = Find-TitleExe $folder
+    if (-not $title) {
+        Write-Missing "В папке игры нет исполняемого файла game_scarlett_master.exe" "Без него запускать нечего: ни DSTN, ни VIctory его не создают."
+        Write-Result "VIctory" $false "VIctory собран, но запускать нечего."
+        return $false
+    }
+
+    $previousGameDir = $env:VICTORY_GAME_DIR
+    $env:VICTORY_GAME_DIR = $folder
+    try {
+        $null = Invoke-Logged $victory @("config") $env:LOCALAPPDATA
+        Write-Log ""
+        Write-Log "Предупреждение авторов VIctory: вход в мир на настоящей видеокарте сейчас может её подвесить, и Windows" Yellow
+        Write-Log "сбросит драйвер (все мониторы на миг погаснут). Сохраните открытые документы." Yellow
+        if (-not (Confirm-Yes "Запустить $([System.IO.Path]::GetFileName($title)) через VIctory?")) { return $false }
+        $code = Invoke-Logged $victory @("run", $title, "--execute") $env:LOCALAPPDATA
+    } finally {
+        $env:VICTORY_GAME_DIR = $previousGameDir
+    }
+    Write-Log "Журнал сбоев VIctory: $(Join-Path $env:LOCALAPPDATA 'victory\data\crashes.log')"
+    Write-Result "Запуск через VIctory" ($code -eq 0) "Код выхода: $($code)."
+    return ($code -eq 0)
+}
+
 # ---------------------------------------------------------------- меню
 
 $Steps = [ordered]@{
@@ -579,6 +684,7 @@ $Steps = [ordered]@{
     "7" = @{ Key = "find";       Title = "Найти копии игры на этом ПК";                       Run = { Step-Find } }
     "8" = @{ Key = "game-check"; Title = "Проверить свою копию игры";                         Run = { Step-GameCheck } }
     "9" = @{ Key = "port";       Title = "Собрать порт из копии (шейдеры и загрузчик)";      Run = { Step-Port } }
+    "10" = @{ Key = "victory";   Title = "Запустить свою копию через VIctory (родственный проект)"; Run = { Step-Victory } }
 }
 
 Write-Log "DSTN (ДАСТАН) — стартовое меню для Windows. $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" Cyan
@@ -594,14 +700,14 @@ try {
         while ($true) {
             Write-Host ""
             Write-Host "  DSTN — ДАСТАН · что делаем?" -ForegroundColor Cyan
-            foreach ($number in $Steps.Keys) { Write-Host ("   {0}  {1}" -f $number, $Steps[$number].Title) }
-            Write-Host "  10  Открыть папку с журналами"
+            foreach ($number in $Steps.Keys) { Write-Host ("  {0,2}  {1}" -f $number, $Steps[$number].Title) }
+            Write-Host "  11  Открыть папку с журналами"
             Write-Host "   0  Выход"
             $choice = Read-Host "Номер"
             if ($null -eq $choice) { break }
             $choice = $choice.Trim()
             if ($choice -eq "0" -or $choice -eq "") { break }
-            if ($choice -eq "10") { Start-Process explorer.exe $LogDir; continue }
+            if ($choice -eq "11") { Start-Process explorer.exe $LogDir; continue }
             if (-not $Steps.Contains($choice)) { Write-Host "Нет такого пункта: $choice" -ForegroundColor Yellow; continue }
             $null = & $Steps[$choice].Run
         }

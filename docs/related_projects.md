@@ -170,6 +170,29 @@ and for GFX11 the order of LLVM's `UfmtGFX11::UnifiedFormat`). The GFX11 numbers
 hardware oracle itself (a wrong FORMAT changes the fetched words); the GFX10 numbers and layout are Mesa's and not yet
 run on RDNA2 hardware.
 
+## Marvisak/VIctory
+
+<https://github.com/Marvisak/VIctory>
+
+A Rust project that runs the same Xbox Series title natively on Windows from the user's own files: it maps the
+title's executable in its own process, implements the console runtime offline, forwards the console D3D12 to host
+D3D12 and recompiles the console's shaders to DXIL when the title creates a pipeline. Its README at commit `ffe310e`
+(2026-11-23) reports the title booting through its first-boot screens and menus at 30 fps, playing the intro video
+with sound, and loading the world in about 50 s, where rendering still fails; it was tested on one machine (Windows
+11, AMD RX 6700 XT), and entering the world on a real GPU can hang it until Windows resets the display driver. Like
+DSTN, it needs the title's executable, which it does not provide.
+
+**Licence:** GPL-3.0-or-later, the same as DSTN, so adapted code can be used with attribution and the licence
+notice. The SCARAB rule above still applies: facts first, verified, written in this repository's style. **One
+exception:** VIctory ships `crates/victory-formats/src/bcpack-tables.bin`, constant tables of the BCPack format that
+its own [asset policy](https://github.com/Marvisak/VIctory/blob/ffe310eb2098e52169f4c44db5ffdabf43a72622/docs/asset-policy.md) says the repository's licence does not cover. That file must not be copied into DSTN.
+
+**What we use it for:** item 10 of `Start-DSTN.bat` fetches VIctory at a pinned commit into
+`%LOCALAPPDATA%\DSTN\victory`, outside this repository, builds it with Cargo and runs the user's own executable
+with it, so a user can compare the two loaders on the same files. Nothing of VIctory is stored here. Its
+[architecture notes](https://github.com/Marvisak/VIctory/blob/ffe310eb2098e52169f4c44db5ffdabf43a72622/docs/architecture.md) (the order in which imports are resolved, title storage as a virtual drive over a host
+folder, a crash reporter that names faults as `module+rva`) is a reference point for DSTN's loader.
+
 ## The line
 
 | Fine | Not fine |

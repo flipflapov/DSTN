@@ -56,7 +56,7 @@ class StartMenuTest(unittest.TestCase):
         valid = re.search(r'\[ValidateSet\(([^)]*)\)\]\s*\[string\]\$Step', text)
         self.assertIsNotNone(valid)
         steps = [s for s in re.findall(r'"([^"]*)"', valid.group(1)) if s]
-        entries = re.findall(r'^\s*"(\d)" = @\{ Key = "([^"]+)";\s*Title = "[^"]+";\s*Run = \{ (Step-[\w-]+) \} \}',
+        entries = re.findall(r'^\s*"(\d+)" = @\{ Key = "([^"]+)";\s*Title = "[^"]+";\s*Run = \{ (Step-[\w-]+) \} \}',
                              text, re.M)
         self.assertEqual([key for _, key, _ in entries], steps, "ValidateSet and the menu entries differ")
         self.assertEqual([number for number, _, _ in entries], [str(i) for i in range(1, len(entries) + 1)])

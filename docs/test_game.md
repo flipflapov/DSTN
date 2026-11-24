@@ -31,6 +31,7 @@
 | 7 | Найти копии игры на этом ПК (`make_game.py --find`) | `Start-DSTN.bat find` |
 | 8 | Проверить свою копию игры (`make_game.py --check`) | `Start-DSTN.bat game-check` |
 | 9 | Собрать порт: стадии `check,shaders,runtime` или свои | `Start-DSTN.bat port` |
+| 10 | Запустить свою копию через VIctory, родственный загрузчик на Rust (см. ниже) | `Start-DSTN.bat victory` |
 
 Пункт 2 ставит только то, чего не хватает, и сначала показывает список и спрашивает согласия. Программы
 ставятся через `winget` (встроен в Windows 10/11; если его нет — «App Installer» из Microsoft Store):
@@ -45,6 +46,14 @@
 | Подмодуль `third_party/rpf9-explorer` | `git submodule update --init --recursive` |
 | llvm-mc с целью AMDGPU | `scripts/build_llvm_mc.ps1`, сборка из исходников LLVM, 20–40 минут (спрашивает отдельно) |
 | ffmpeg (необязательно) | `winget install Gyan.FFmpeg` (спрашивает отдельно) |
+
+Пункт 10 скачивает [VIctory](https://github.com/Marvisak/VIctory) (GPL-3.0-or-later) закреплённого коммита в
+`%LOCALAPPDATA%\DSTN\victory`, вне репозитория DSTN, при необходимости ставит Rust (`winget install Rustlang.Rustup`),
+собирает его (`cargo build --release -p victory`) и запускает исполняемый файл вашей копии
+(`victory run <exe> --execute`, папка игры — в `VICTORY_GAME_DIR`). По README VIctory игра у него доходит до меню и
+загрузки мира, но мир пока не рисуется, а вход в мир на настоящей видеокарте может её подвесить. Без исполняемого
+файла игры (`game_scarlett_master.exe`) запускать нечего и через VIctory. Подробнее о проекте и о том, что из него
+можно брать, — в [related_projects.md](related_projects.md#marvisakvictory).
 
 Windows может запросить права администратора для каждого установщика. Если программа установилась, но проверка её
 не видит, закройте окно и запустите `Start-DSTN.bat` заново: некоторые установщики меняют `PATH` только для новых окон.
