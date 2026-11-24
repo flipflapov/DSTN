@@ -1,4 +1,4 @@
-﻿﻿# Builds runtime\build\dstnrt.exe with MSVC at BelowNormal priority, on half the cores by default.
+﻿# Builds runtime\build\dstnrt.exe with MSVC at BelowNormal priority, on half the cores by default.
 # Uses VS's CMake + Ninja when the "C++ CMake tools" component is installed (or native Windows cmake + ninja on PATH),
 # otherwise calls cl.exe directly.
 # The GameInput controller shim (SDL3, docs/gameinput.md) is built only on the CMake path: with an installed SDL3, or
@@ -6,6 +6,9 @@
 param(
     [switch]$Debug,
     [switch]$FetchSdl3,
+    # Run the build batch in the pipeline instead of straight on the console, so a caller that pipes this script's
+    # output (scripts/dstn_start.ps1) gets every CMake, Ninja and compiler line for its log.
+    [switch]$PipeOutput,
     [ValidateRange(1, 2147483647)][int]$jobs = [Math]::Max(1, [int]([Environment]::ProcessorCount / 2))
 )
 $ErrorActionPreference = "Stop"
@@ -105,6 +108,19 @@ $bat = Join-Path $out "_build.cmd"
 # Keep the paths encoded for CP 65001 and start with an ASCII command that cmd.exe can read before switching.
 $batchText = "@echo off`r`nchcp 65001 >nul`r`nset `"PATH=$installer;%PATH%`"`r`ncall `"$vcvars`" >nul || exit /b 1`r`n$body`r`n"
 [System.IO.File]::WriteAllText($bat, $batchText, [System.Text.UTF8Encoding]::new($false))
+
+if ($PipeOutput) {
+    # cmd.exe and the compiler inherit BelowNormal from this process. --% hands cmd.exe the same /s /c ""path"" as the
+    # Start-Process line below (PowerShell only expands %DSTN_BUILD_CMD%), so a path holding & or ^ stays quoted;
+    # the 2>&1 is cmd.exe's, which merges the compiler's stderr into the output.
+    try { (Get-Process -Id $PID).PriorityClass = "BelowNormal" } catch {}
+    try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch {}
+    $env:DSTN_BUILD_CMD = $bat
+    & cmd.exe --% /s /c ""%DSTN_BUILD_CMD%"" 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "build failed ($LASTEXITCODE)" }
+    Write-Host "built $out\dstnrt.exe"
+    exit 0
+}
 
 # /s with a second pair of quotes: cmd.exe strips only the outer pair, so a path holding & or ^ stays quoted.
 $p = Start-Process cmd.exe -ArgumentList "/s", "/c", "`"`"$bat`"`"" -NoNewWindow -PassThru

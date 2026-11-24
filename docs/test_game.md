@@ -15,6 +15,26 @@
 | `tiny_frame` | Один кадр: `D3D12XboxCreateDevice`, очистка render target и чтение его обратно на устройстве Vulkan | `run_tiny_frame` |
 | `tiny_guest_draw` | Три отрисовки двумя рукописными шейдерами в текстуру 64×64 с проверкой каждого пикселя; опционально сцена на 600 кадров с вводом, звуком и сохранением | `d3d12_translated_draw_guest`, `d3d12_guest_scene` |
 
+## 0. Стартовое меню (Windows)
+
+Все шаги ниже собраны в одно меню: дважды щёлкните `Start-DSTN.bat` в корне репозитория (сам скрипт меню —
+`scripts/dstn_start.ps1`). Пункты меню:
+
+| № | Пункт | Шаг для запуска без меню |
+|---|---|---|
+| 1 | Проверить компьютер: Visual Studio, Windows SDK, Vulkan SDK и видеокарта, Python, .NET, llvm-mc | `Start-DSTN.bat check` |
+| 2 | Собрать загрузчик `dstnrt.exe` (разделы 1 и 3 ниже) | `Start-DSTN.bat build` |
+| 3 | Запустить `tiny_game` четыре раза: основной запуск, `tls`, `eh`, `stack` | `Start-DSTN.bat testgame` |
+| 4 | Тестовый кадр на Vulkan (`tiny_frame`) | `Start-DSTN.bat frame` |
+| 5 | Все тесты загрузчика (CTest) | `Start-DSTN.bat tests` |
+| 6 | Найти копии игры на этом ПК (`make_game.py --find`) | `Start-DSTN.bat find` |
+| 7 | Проверить свою копию игры (`make_game.py --check`) | `Start-DSTN.bat game-check` |
+| 8 | Собрать порт: стадии `check,shaders,runtime` или свои | `Start-DSTN.bat port` |
+
+Каждый запуск пишет весь вывод в `logs\dstn-<дата>.log` (папка `logs` не попадает в git). В журнале только вывод
+инструментов, без данных игры, поэтому его можно присылать при ошибке. Папку игры меню запоминает в
+`logs\game_folder.txt`.
+
 ## 1. Сборка на Windows
 
 Нужны Windows 10/11 x64 и Visual Studio 2022 с нагрузкой «Desktop development with C++» и Windows SDK

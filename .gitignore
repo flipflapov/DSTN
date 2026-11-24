@@ -37,3 +37,6 @@ __pycache__/
 *.exp
 *.log
 .vs/
+
+# ---- Start-DSTN.bat: run logs and the remembered game folder ----
+logs/
