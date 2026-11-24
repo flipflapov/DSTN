@@ -1,58 +1,67 @@
-# Contributing
+# Как участвовать
 
-Thanks for helping. A few rules keep the project safe to host:
+Спасибо за помощь. Несколько правил позволяют безопасно держать проект на хостинге:
 
-- **No game data, ever.** That covers archives, the executable, carved files, shaders (DXBC, FSSM, disassembly,
-  SPIR-V), textures, models, audio, videos, and reports or logs that quote them. `.gitignore` blocks the common
-  types; check `git status` before you commit anyway.
-- **No keys, decryption or protection workarounds**, and no links to where to get them. The tools only read files
-  that are already plain on disk.
-- Short excerpts needed to explain a format (a few header bytes, one instruction sequence) are fine in docs and
-  comments.
+- **Никаких данных игры, никогда.** Это архивы, исполняемый файл, вырезанные файлы, шейдеры (DXBC, FSSM,
+  дизассемблированный код, SPIR-V), текстуры, модели, звук, видео, а также отчёты и логи, которые их цитируют.
+  `.gitignore` блокирует частые типы файлов, но всё равно проверяйте `git status` перед коммитом.
+- **Никаких ключей, расшифровки и обхода защиты**, и никаких ссылок на то, где их взять. Инструменты читают только
+  файлы, которые уже лежат на диске в открытом виде.
+- Короткие фрагменты, нужные, чтобы объяснить формат (несколько байтов заголовка, одна последовательность
+  инструкций), в документации и комментариях допустимы.
 
-## Before you start
+## Перед началом
 
-Claim the work in [the coordination issue][claims] first: the open issue titled "Coordinating who works on what" (it
-moves to a new issue when the thread gets long, so the link searches for it). Check its tables and the open pull
-requests, post `claiming: <ID>` there (or a one-line description for something not listed yet), and put the ID in
-your pull request. Found something that needs doing but won't do it yourself? Post `finding: <one line>` there, with
-where it is and why it matters, and it goes on the list for others. When two pull requests overlap anyway, the one
-that lands first is merged and the other is asked to rebase or close. GPU test results go in
-[#166](https://github.com/ItsNotRexed/Leonida/issues/166). Work on the D3D12 → Vulkan layer has its own page,
-[#313](https://github.com/ItsNotRexed/Leonida/issues/313): the critical path, who builds what, and which D3D12
-methods are still open.
+Работа над DSTN обсуждается в issues этого репозитория: перед крупным изменением откройте issue или напишите в
+существующем, чтобы два человека не делали одно и то же. В pull request укажите, какое issue он закрывает
+(`Fixes #N`), и `Depends on: #N` для каждого pull request, на котором он основан.
+
+DSTN — форк [Leonida](https://github.com/ItsNotRexed/Leonida). Исправление, полезное и исходному проекту, можно
+отправить туда по его правилам: сначала заявка в [issue координации][claims] (открытое issue с заголовком
+«Coordinating who works on what»; оно переезжает в новое, когда тред разрастается, поэтому ссылка ищет его),
+затем pull request с ID пункта. Учтите, что в DSTN имена переименованы (`DSTN_*` вместо `LEONIDA_*`, `dstnrt`
+вместо `gta6rt`), поэтому для Leonida изменение нужно делать на его собственном коде. GPU-результаты исходный
+проект собирает в [Leonida#166](https://github.com/ItsNotRexed/Leonida/issues/166), работу над слоем
+D3D12 → Vulkan — в [Leonida#313](https://github.com/ItsNotRexed/Leonida/issues/313).
 
 [claims]: https://github.com/ItsNotRexed/Leonida/issues?q=is%3Aissue%20is%3Aopen%20in%3Atitle%20%22Coordinating%20who%20works%20on%20what%22
 
-## Working on the code
+## Работа с кодом
 
-- Python tools run with `python -I` and use only the standard library unless a file says otherwise.
-- A text file a tool writes (JSON, CSV, a manifest, an assembly listing) names its line ending: `open(path, "w",
-  encoding="utf-8", newline="\n")` (the same for `Path.open`, `Path.write_text` and a text-mode
-  `tempfile.NamedTemporaryFile`), so the output is LF on Windows too and the same input gives the same bytes on every
-  platform. `tests/test_text_write_line_endings.py` fails for a writer that forgets it.
-- `tools/rpf9dump` needs the submodule: `git submodule update --init`.
-- A new shader-translator rule goes into the contract table in `docs/design.md`, with how it was confirmed: a GPU
-  test, a Mesa/LLVM reference, or a count over the corpus.
-- `python -I tests/test_<name>.py` runs one of the unit tests (standard library only; CI runs them all). The test
-  files with no `__main__` block or an `import pytest` (they need the packages in `tests/requirements.txt`) run with
-  `python -m pytest tests/test_<name>.py` instead, as [AGENTS.md](AGENTS.md) describes; under `python -I` they fail
-  to import or run nothing.
-- Runtime tests: `cmake -S runtime -B runtime/build`, `cmake --build runtime/build --config RelWithDebInfo`, then
-  `ctest --test-dir runtime/build -C RelWithDebInfo --output-on-failure`. The CPU tests that need no game data are configured
-  on Windows; Linux and macOS configure the portable subset (`dstnrt` and the shims are Windows-only). Tests that need the retail package read `DSTN_GAME_DIR` (and `DSTN_MOVIE` for the Bink
-  decode test) in place and print `SKIP` when the variable is unset; never copy or commit those files.
-- Viewer streaming tests: `node --test tests/test_viewer_streaming.cjs` (Node.js 22+, CI tests 24 LTS; no packages,
-  browser, network or game data). These execute the viewer streaming code with a synthetic loader and clock.
-- `loader_test` writes small PE images to a `dstn_loader_test` folder in `%TEMP%`. Antivirus that blocks newly
-  written executables makes it stop with that reason; exclude the folder or set `DSTN_TEST_DIR` to one it skips.
-- Tool checks: `python -m compileall -q make_game.py tools tests`. The optional
-  `vk_pipeline_check <spirv dir> [cache.bin] [--jobs N]` creates a module (and, for compute shaders, a
-  pipeline) for every translated shader and reports failures plus the saved cache path.
-- GPU tests are small hand-written RDNA2 programs in `runtime/test/shaders`. `build.py` turns them into SPIR-V
-  using `llvm-mc` with the AMDGPU target (LLVM 21+). `check.py` runs them on your GPU and compares the results.
-  A new test gets its expected values in the comment at its top and a check in `check.py`.
-  [docs/testing.md](docs/testing.md) covers setup per OS, including native Windows options, and known problems.
-- Say what you tested and on which GPU in the pull request.
-- Run the translator tests with `python -I scripts/run_semantic_tests.py tests/semantic` (see `tests/semantic/README.md`). A new
-  translator rule should come with a small hand-written `.asm` fixture and its expected output words.
+- Инструменты на Python запускаются с `python -I` и используют только стандартную библиотеку, если в файле не
+  сказано иное.
+- Текстовый файл, который пишет инструмент (JSON, CSV, манифест, листинг ассемблера), явно задаёт окончание строк:
+  `open(path, "w", encoding="utf-8", newline="\n")` (так же для `Path.open`, `Path.write_text` и текстового режима
+  `tempfile.NamedTemporaryFile`), чтобы и на Windows вывод был в LF, а одинаковый вход давал одинаковые байты на
+  любой платформе. `tests/test_text_write_line_endings.py` падает, если пишущий код это забыл.
+- `tools/rpf9dump` нужен подмодуль: `git submodule update --init`.
+- Новое правило транслятора шейдеров добавляется в таблицу контракта в `docs/design.md` с тем, как оно
+  подтверждено: GPU-тестом, эталоном Mesa/LLVM или подсчётом по корпусу.
+- `python -I tests/test_<имя>.py` запускает один из юнит-тестов (только стандартная библиотека; CI запускает их все).
+  Файлы тестов без блока `__main__` или с `import pytest` (им нужны пакеты из `tests/requirements.txt`) запускаются
+  через `python -m pytest tests/test_<имя>.py`, как описано в [AGENTS.md](AGENTS.md); под `python -I` они не
+  импортируются или ничего не запускают.
+- Тесты runtime: `cmake -S runtime -B runtime/build`, `cmake --build runtime/build --config RelWithDebInfo`, затем
+  `ctest --test-dir runtime/build -C RelWithDebInfo --output-on-failure`. CPU-тесты, которым не нужны данные игры,
+  настраиваются на Windows; Linux и macOS настраивают переносимую часть (`dstnrt` и заглушки есть только для
+  Windows). Тесты, которым нужен розничный пакет, читают его на месте по `DSTN_GAME_DIR` (и `DSTN_MOVIE` для теста
+  декодирования Bink) и печатают `SKIP`, если переменная не задана; никогда не копируйте и не коммитьте эти файлы.
+- Тестовая игра для загрузчика (подставные программы `tiny_game`, `tiny_frame` и другие) описана в
+  [docs/test_game.md](docs/test_game.md).
+- Тесты потоковой загрузки во вьювере: `node --test tests/test_viewer_streaming.cjs` (Node.js 22+, CI проверяет
+  24 LTS; без пакетов, браузера, сети и данных игры). Они выполняют код потоковой загрузки вьювера с синтетическим
+  загрузчиком и часами.
+- `loader_test` пишет маленькие PE-образы в папку `dstn_loader_test` в `%TEMP%`. Антивирус, блокирующий только что
+  записанные исполняемые файлы, останавливает его с этой причиной; добавьте папку в исключения или задайте
+  `DSTN_TEST_DIR` — папку, которую он пропускает.
+- Проверка инструментов: `python -m compileall -q make_game.py tools tests`. Необязательный
+  `vk_pipeline_check <папка spirv> [cache.bin] [--jobs N]` создаёт модуль (а для вычислительных шейдеров —
+  конвейер) для каждого переведённого шейдера и сообщает об ошибках и пути сохранённого кэша.
+- GPU-тесты — маленькие рукописные программы RDNA2 в `runtime/test/shaders`. `build.py` превращает их в SPIR-V с
+  помощью `llvm-mc` с целью AMDGPU (LLVM 21+). `check.py` запускает их на вашей видеокарте и сравнивает результаты.
+  У нового теста ожидаемые значения записываются в комментарии в его начале, а проверка — в `check.py`.
+  [docs/testing.md](docs/testing.md) описывает настройку для каждой ОС, включая варианты для Windows, и известные
+  проблемы.
+- В pull request напишите, что вы проверяли и на какой видеокарте.
+- Тесты транслятора: `python -I scripts/run_semantic_tests.py tests/semantic` (см. `tests/semantic/README.md`). Новое
+  правило транслятора должно сопровождаться маленьким рукописным `.asm`-фикстуром и ожидаемыми словами результата.

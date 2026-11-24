@@ -20,10 +20,10 @@ DSTN переводит всю документацию исходного пр�
 |---|---|---|
 | [`README.md`](../README.md) | 312 | ✅ переведён |
 | [`docs/test_game.md`](test_game.md) | 159 | ✅ написан на русском (новый) |
-| [`.github/pull_request_template.md`](../.github/pull_request_template.md) | 21 | ⏳ ожидает |
-| [`AGENTS.md`](../AGENTS.md) | 101 | ⏳ ожидает |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 58 | ⏳ ожидает |
-| [`docs/README.md`](README.md) | 94 | ⏳ ожидает |
+| [`.github/pull_request_template.md`](../.github/pull_request_template.md) | 20 | ✅ переведён |
+| [`AGENTS.md`](../AGENTS.md) | 117 | ✅ переведён |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | 67 | ✅ переведён |
+| [`docs/README.md`](README.md) | 99 | ✅ переведён |
 | [`docs/animation.md`](animation.md) | 1258 | ⏳ ожидает |
 | [`docs/audio.md`](audio.md) | 398 | ⏳ ожидает |
 | [`docs/audio_config.md`](audio_config.md) | 266 | ⏳ ожидает |

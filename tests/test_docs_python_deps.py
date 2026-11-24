@@ -41,7 +41,9 @@ def imports_third_party(source):
 
 def listed_tools(agents_text):
     """Basenames of the `*.py` tools in the AGENTS.md convention bullet that names the numpy/Pillow exceptions."""
-    bullet = re.search(r"^- Python tools run with `python -I`.*?(?=^- |^\Z)", agents_text, re.S | re.M)
+    # DSTN's AGENTS.md is in Russian; the English wording of the upstream file is accepted too.
+    bullet = re.search(r"^- (?:Python tools run with|Инструменты на Python запускаются с) `python -I`.*?(?=^- |^\Z)",
+                       agents_text, re.S | re.M)
     return set(re.findall(r"`([\w]+\.py)`", bullet.group(0))) if bullet else set()
 
 

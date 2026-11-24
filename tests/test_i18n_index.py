@@ -113,7 +113,8 @@ class IndexTest(unittest.TestCase):
         codes = [row["code"] for row in self.read_rows()]
         with open(DOCS_README, encoding="utf-8") as f:
             lines = [line for line in f.read().splitlines()
-                     if line.startswith("Community quickstarts (stable onboarding text only")]
+                     if line.startswith(("Community quickstarts (stable onboarding text only",
+                                         "Краткие руководства сообщества (только стабильный вводный текст"))]
         self.assertEqual(len(lines), 1, f"docs/README.md has {len(lines)} 'Other languages' lines")
         line = lines[0]
         for code in codes:

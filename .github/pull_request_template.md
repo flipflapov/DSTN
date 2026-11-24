@@ -1,21 +1,20 @@
-Claimed in the coordination issue as: <!-- the item ID from the open "Coordinating who works on what" issue,
-     for example TEST-17, or a link to your claim -->
+Закрывает: <!-- Fixes #N для issue, которое решает этот pull request; удалите строку, если такого нет -->
 
-Depends on: <!-- #N for every pull request this one builds on or conflicts with (the coordination issue's
-     Commands section, AGENTS.md); delete the line if it builds on none and conflicts with none -->
+Depends on: <!-- #N для каждого pull request, на котором основан этот или с которым он конфликтует (AGENTS.md);
+     удалите строку, если таких нет. Ключевое слово «Depends on:» не переводите: его читает автоматика -->
 
-### What and why
+### Что и зачем
 
-<!-- What this changes and the problem it solves. -->
+<!-- Что меняется и какую проблему это решает. -->
 
-### Tested
+### Проверено
 
-<!-- What you ran and on which GPU and driver (CONTRIBUTING.md). For the shader translator: how many shaders
-     translate and pass spirv-val, before and after. -->
+<!-- Что вы запускали и на какой видеокарте и драйвере (CONTRIBUTING.md). Для транслятора шейдеров: сколько шейдеров
+     переводится и проходит spirv-val до и после. -->
 
-AI-assisted: <!-- yes or no (AGENTS.md asks a coding agent to say so) -->
+AI-assisted: <!-- yes или no: сделан ли pull request с помощью ИИ (AGENTS.md просит агента это указать) -->
 
-### Checklist
+### Чек-лист
 
-- [ ] No game data, keys or decryption (CONTRIBUTING.md), including in logs or reports quoted here.
-- [ ] A new translator rule is in the contract table of `docs/design.md`, with how it was confirmed.
+- [ ] Нет данных игры, ключей и расшифровки (CONTRIBUTING.md), в том числе в приведённых здесь логах и отчётах.
+- [ ] Новое правило транслятора добавлено в таблицу контракта в `docs/design.md` с тем, как оно подтверждено.

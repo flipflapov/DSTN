@@ -281,7 +281,7 @@ int main() {
     std::vector<std::uint8_t> out;
     CHECK(zlib_inflate(stored, out) && out.size() == 40);
     for (std::uint8_t i = 0; i < 40; ++i) CHECK(out[i] == i);
-    CHECK(zlib_inflate(fixed, out) && out == bytes("hello hello hello dstn"));
+    CHECK(zlib_inflate(fixed, out) && out == bytes("hello hello hello leonida"));
     CHECK(zlib_inflate(dynamic, out) && out == skewed(600));
     CHECK(sha256_hex(out) == "9cd6848f765bff2a9f42a8b42f6164042dad67d3e9f82e0044ddc7d1ecdeebb2");
     auto broken = dynamic;
@@ -341,7 +341,7 @@ int main() {
     }
     // Two different 0x0D payloads: the last one is the program, as tools/fssm_unpack.py (and so fssm_sha256) has it.
     CHECK(fssm_program(container({{fixed, 25}, {dynamic, 600}})) == skewed(600));
-    CHECK(fssm_program(container({{dynamic, 600}, {fixed, 25}})) == bytes("hello hello hello dstn"));
+    CHECK(fssm_program(container({{dynamic, 600}, {fixed, 25}})) == bytes("hello hello hello leonida"));
 
     // An index with one findable shader, one without a hash, and the module next to it.
     const testfiles::ScratchDir scratch("dstn_shader_library_test");

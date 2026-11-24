@@ -1,101 +1,117 @@
-# Guide for coding agents
+# Руководство для ИИ-агентов
 
-Read this before changing anything here. [CONTRIBUTING.md](CONTRIBUTING.md) has the rules for every contributor and
-[docs/design.md](docs/design.md) the formats and the translator's runtime contract; this file adds what an agent
-tends to get wrong.
+Прочитайте это, прежде чем что-либо менять. В [CONTRIBUTING.md](CONTRIBUTING.md) — правила для всех участников,
+в [docs/design.md](docs/design.md) — форматы и контракт транслятора с runtime; этот файл добавляет то, в чём агенты
+чаще всего ошибаются.
 
-## What this is
+## Что это
 
-A port template for the Xbox Series build of GTA VI, built on the player's PC from their own copy:
-`make_game.py` carves and translates the shaders (RDNA2 → SPIR-V), exports the assets and builds `runtime/`, a PE
-loader that maps the game's executable and resolves its imports to shims. Nothing of the game is in the repository.
+Шаблон порта сборки GTA VI для Xbox Series, который собирается на ПК игрока из его собственной копии:
+`make_game.py` вырезает и переводит шейдеры (RDNA2 → SPIR-V), экспортирует ресурсы и собирает `runtime/` —
+PE-загрузчик, который отображает исполняемый файл игры и связывает его импорты с заглушками. В репозитории нет
+ничего из игры. DSTN — форк [Leonida](https://github.com/ItsNotRexed/Leonida): переменные окружения называются
+`DSTN_*`, runtime — `dstnrt`, пространство имён C++ — `dstn::`.
 
-## Where things are
+## Где что лежит
 
-- The notes under `docs/` record measured formats, indexed by [docs/README.md](docs/README.md); `docs/design.md` is the one quoted most.
-- `scripts/` holds the GPU/Wine test runners (`run_gpu_tests.py`, `run_wine_tests.py`) and PowerShell build helpers.
-- `viewer/` is the map viewer: `index.html` plus `serve.py`, a local-only server for the exported world.
-- `third_party/` holds the `rpf9-explorer` submodule (`tools/rpf9dump` needs `git submodule update --init`), the vendored `xtaskqueue` the `xgameruntime` shim links and the vendored `bcpack-rs` rANS decoder of the BCPack calibration tools.
-- `game/xbox-1.0.2.1.json` is the per-file size and SHA-256 manifest of the Xbox package — hashes only, no game content.
-- `tests/semantic/` is the translator regression suite; a new translator rule comes with a small hand-written `.asm` fixture there.
+- Заметки в `docs/` фиксируют измеренные форматы, их оглавление — [docs/README.md](docs/README.md); чаще всего
+  цитируется `docs/design.md`. Какие документы уже переведены на русский — в
+  [docs/translation_status.md](docs/translation_status.md).
+- В `scripts/` — запуск GPU- и Wine-тестов (`run_gpu_tests.py`, `run_wine_tests.py`) и вспомогательные скрипты
+  сборки на PowerShell.
+- `viewer/` — вьювер карты: `index.html` и `serve.py`, локальный сервер для экспортированного мира.
+- В `third_party/` — подмодуль `rpf9-explorer` (`tools/rpf9dump` требует `git submodule update --init`),
+  встроенный `xtaskqueue`, с которым линкуется заглушка `xgameruntime`, и встроенный rANS-декодер `bcpack-rs` для
+  инструментов калибровки BCPack.
+- `game/xbox-1.0.2.1.json` — манифест размеров и SHA-256 каждого файла пакета Xbox: только хеши, никакого
+  содержимого игры.
+- `tests/semantic/` — регрессионный набор транслятора; новое правило транслятора сопровождается маленьким
+  рукописным `.asm`-фикстуром там.
+- Подставные игры для проверки загрузчика — `runtime/test/fixtures/`, как их запускать — в
+  [docs/test_game.md](docs/test_game.md).
 
-## Hard rules
+## Жёсткие правила
 
-- **No game data, ever**: no archives, executables, carved files, shaders in any form (DXBC, FSSM, disassembly,
-  SPIR-V), textures, audio, or logs and reports that quote them, in commits, issues, pull requests or test
-  fixtures. A test that needs a shader builds its input by hand or reads it from the user's work folder.
-- **No keys, decryption or protection workarounds.** If a format turns out to be encrypted, write that down in
-  `docs/design.md` and stop there.
-- **Nothing online**: no Xbox Live or Rockstar services or domains.
-- **Fix, don't disable**: a shader the translator rejects gets a rule, not a skip list. A new rule goes into the
-  contract table in `docs/design.md` with how it was confirmed (a GPU test, a Mesa/LLVM reference, or a count over
-  the corpus).
+- **Никаких данных игры, никогда**: ни архивов, ни исполняемых файлов, ни вырезанных файлов, ни шейдеров в любом
+  виде (DXBC, FSSM, дизассемблированный код, SPIR-V), ни текстур, ни звука, ни логов и отчётов, которые их цитируют,
+  — ни в коммитах, ни в issues, ни в pull request, ни в фикстурах тестов. Тест, которому нужен шейдер, строит вход
+  вручную или читает его из рабочей папки пользователя.
+- **Никаких ключей, расшифровки и обхода защиты.** Если формат оказался зашифрован, запишите это в
+  `docs/design.md` и на этом остановитесь.
+- **Ничего онлайн**: никаких сервисов и доменов Xbox Live или Rockstar.
+- **Чинить, а не отключать**: шейдер, который транслятор отвергает, получает правило, а не место в списке
+  пропусков. Новое правило попадает в таблицу контракта в `docs/design.md` с тем, как оно подтверждено (GPU-тест,
+  эталон Mesa/LLVM или подсчёт по корпусу).
 
-## Claim before you start
+## Договоритесь, прежде чем начинать
 
-- Work is claimed in the coordination issue before a pull request is opened: the open issue titled "Coordinating
-  who works on what". It moves to a new issue when the thread gets long, so look it up instead of using an old
-  number:
+- Работа в DSTN обсуждается в issues этого репозитория. Прежде чем открывать pull request, проверьте открытые
+  issues и pull request: если кто-то уже делает то же самое, остановитесь и скажите об этом пользователю, а не пишите
+  второй раз.
+- В pull request укажите `Fixes #N` для закрываемого issue и `Depends on: #N` для каждого pull request, на котором
+  основан ваш.
+- Нашли работу, которую сами делать не будете (ошибка, недостающий метод, устаревшая документация, продолжение
+  вашего pull request)? Откройте issue: одна строка сути, где это (файл и строка), почему это важно и нужны ли файлы
+  игры или особое железо.
+- Изменение для исходного проекта Leonida делается на его коде и по его правилам: заявка в issue координации
+  («Coordinating who works on what»), ID пункта в pull request. Найти актуальное issue координации:
 
   ```sh
   gh issue list -R ItsNotRexed/Leonida --state open --search "Coordinating who works on what in:title"
   ```
 
-  Check its tables and the open pull requests first. If someone has claimed the item or has a pull request for it,
-  stop and tell the user instead of writing it a second time.
-- Put the item ID from that issue in the pull request, and `Depends on: #N` for every pull request yours builds on.
-- Found work you won't do yourself (a bug, a missing method, a stale doc, a follow-up of your own pull request)?
-  Post it in the coordination issue as `finding: <one line>`, followed by where it is (file and line), why it matters,
-  and whether it needs game files or particular hardware. The coordinator checks it and lists it for others.
-- For the D3D12 → Vulkan layer (`runtime/shims/d3d12_*`, `runtime/src/vulkan_*`), also read
-  [#313](https://github.com/ItsNotRexed/Leonida/issues/313): most of that work builds on a few open pull requests,
-  and it lists which D3D12 methods are still open.
+- По слою D3D12 → Vulkan (`runtime/shims/d3d12_*`, `runtime/src/vulkan_*`) прочитайте также
+  [Leonida#313](https://github.com/ItsNotRexed/Leonida/issues/313): там перечислено, какие методы D3D12 ещё открыты.
 
-## Before you guess, look
+## Прежде чем гадать, посмотрите
 
-- The format or behaviour may already be measured in `docs/design.md`. Quote the file and offset a claim comes from,
-  or call it a hypothesis.
-- Count over the whole corpus, not a sample: a rule that holds for 400 shaders can fail on the other 26 000.
+- Формат или поведение, возможно, уже измерены в `docs/design.md`. Указывайте файл и смещение, откуда взято
+  утверждение, или называйте его гипотезой.
+- Считайте по всему корпусу, а не по выборке: правило, верное для 400 шейдеров, может не выполняться для остальных
+  26 000.
 
-## Test without the game first
+## Сначала тестируйте без игры
 
-These need no game files and run in seconds:
+Это не требует файлов игры и выполняется за секунды:
 
 ```powershell
 python -m compileall -q make_game.py tools tests
 python -I make_game.py --help
-python -I scripts/run_semantic_tests.py tests/semantic   # translator regression suite, one file per core; no LLVM, SPIR-V tools or GPU needed
-python -I tests/test_<name>.py                     # standalone standard-library unit test
-node --test tests/test_viewer_streaming.cjs        # viewer streaming; needs Node 22+
+python -I scripts/run_semantic_tests.py tests/semantic   # регрессионный набор транслятора, по файлу на ядро; не нужны LLVM, инструменты SPIR-V и GPU
+python -I tests/test_<имя>.py                     # отдельный юнит-тест на стандартной библиотеке
+node --test tests/test_viewer_streaming.cjs        # потоковая загрузка вьювера; нужен Node 22+
 dotnet build tools/rpf9dump/rpf9dump.csproj -c Release
 cmake -S runtime -B runtime/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo; cmake --build runtime/build
 ```
 
-For pytest-based tests, use a virtual environment and install the pinned dependencies in
-[`tests/requirements.txt`](tests/requirements.txt). From the repository root, run `python -m pytest` with the
-test file you want to check.
+Для тестов на pytest используйте виртуальное окружение и установите зафиксированные зависимости из
+[`tests/requirements.txt`](tests/requirements.txt). Из корня репозитория запустите `python -m pytest` с нужным
+файлом теста.
 
 ```powershell
 python -m pip install -r tests/requirements.txt
 python -m pytest tests/test_user_sgpr_census.py
 ```
 
-With a work folder already built, a translator change is checked on a slice before the full run, and the result is
-compared with the run before it:
+Если рабочая папка уже собрана, изменение транслятора сначала проверяют на срезе, а результат сравнивают с
+предыдущим прогоном:
 
 ```powershell
 python -I tools/rdna2spirv.py <work>/shaders/dxbc/disasm --out <scratch> --limit 200
-python -I tools/rdna2spirv.py <work>/shaders/dxbc/disasm --out <scratch> --shard 0/8   # one of 8 parallel slices
+python -I tools/rdna2spirv.py <work>/shaders/dxbc/disasm --out <scratch> --shard 0/8   # один из 8 параллельных срезов
 ```
 
-Shard runs write `index.part*.json`; merge them into `index.json` with `--merge`. Report translated and
-`spirv-val`-valid counts before and after; a change that lowers either is a regression.
+Прогоны по срезам пишут `index.part*.json`; объедините их в `index.json` через `--merge`. Сообщайте число
+переведённых шейдеров и прошедших `spirv-val` до и после; изменение, уменьшающее любое из них, — регрессия.
 
-## Conventions
+## Соглашения
 
-- Python tools run with `python -I` and use only the standard library unless a file says otherwise; the exceptions
-  are the texture and model tools that import numpy or Pillow: `bc_feature.py`, `amd_swizzle.py`, `tile_probe.py`,
-  `swizzle_search.py`, `tex_export.py`, `tex_mode_probe.py`, `calibrated_texture.py`, `world_grid_atlas.py`,
-  `tex_headers.py` and `skinned_glb.py` (which fall back to the standard library when numpy is absent).
-- Keep `make_game.py` working on Windows first: paths through `os.path`, no bash in the build.
-- In the pull request, say that it was AI-assisted, what you tested and on which GPU and driver.
+- Инструменты на Python запускаются с `python -I` и используют только стандартную библиотеку, если в файле не
+  сказано иное; исключения — инструменты текстур и моделей, импортирующие numpy или Pillow: `bc_feature.py`,
+  `amd_swizzle.py`, `tile_probe.py`, `swizzle_search.py`, `tex_export.py`, `tex_mode_probe.py`,
+  `calibrated_texture.py`, `world_grid_atlas.py`, `tex_headers.py` и `skinned_glb.py` (без numpy они откатываются на
+  стандартную библиотеку).
+- `make_game.py` в первую очередь должен работать на Windows: пути через `os.path`, никакого bash в сборке.
+- Документация DSTN пишется на русском. Имена файлов, команд, опций, переменных и заголовки, на которые ведут
+  якорные ссылки, не переводятся (см. [docs/translation_status.md](docs/translation_status.md)).
+- В pull request напишите, что он сделан с помощью ИИ, что вы проверили и на какой видеокарте и драйвере.
