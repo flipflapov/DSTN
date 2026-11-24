@@ -131,7 +131,7 @@ or Proton» файла [docs/testing.md](testing.md).
 
 Новую подставную игру добавляют так же, как существующие:
 
-1. Создайте `runtime/test/fixtures/my_game.cpp` — обычную консольную программу для Windows, которая вызывает
+1. Создайте в папке `runtime/test/fixtures/` файл `my_game.cpp` — обычную консольную программу для Windows, которая вызывает
    нужные импорты (например, функции `xgameruntime.dll`) и печатает `PASS`/`FAIL` по каждой проверке.
 2. Добавьте в `runtime/CMakeLists.txt` рядом с `tiny_game` цель `add_executable(my_game ...)`, свяжите её с нужной
    заглушкой (`xgameruntime_stub`, `d3d12_xs_stub`, `xmem_stub`) и задайте
