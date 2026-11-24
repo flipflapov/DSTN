@@ -9,187 +9,197 @@
   <br>
 </h1>
 
-<h4 align="center">Grand Theft Auto VI (Xbox Series) running natively on Windows, built on your PC from your own copy.
+<h4 align="center">Grand Theft Auto VI (Xbox Series) нативно на Windows, собирается на вашем ПК из вашей копии игры.
 </h4>
 
 <p align="center">
-  <a href="docs/i18n/README.md">Other languages</a> |
-  <a href="#project-status">Status</a> |
-  <a href="#how-to-build">How to build</a> |
-  <a href="#how-it-works">How it works</a> |
-  <a href="#want-to-help">Want to help?</a> |
-  <a href="#credits">Credits</a> |
-  <a href="#license">License</a> |
-  <a href="https://discord.gg/rexed">Discord</a>
+  <a href="docs/i18n/README.md">Другие языки</a> |
+  <a href="#состояние-проекта">Состояние</a> |
+  <a href="#как-собрать">Как собрать</a> |
+  <a href="#тестовая-игра">Тестовая игра</a> |
+  <a href="#как-это-устроено">Как это устроено</a> |
+  <a href="#хотите-помочь">Хотите помочь?</a> |
+  <a href="#благодарности">Благодарности</a> |
+  <a href="#происхождение-и-лицензия">Лицензия</a>
 </p>
 
-DSTN is a static recompilation project. The Xbox Series CPU is x86-64 like a PC, so the game's code is loaded
-and run natively, and the console's system software is reimplemented. The console's precompiled RDNA2 GPU programs
-are translated to SPIR-V for Vulkan. The game's models, textures and audio are read from your package. All of this
-happens **on your PC, from your own copy of the game**.
+DSTN — проект статической рекомпиляции. Процессор Xbox Series — x86-64, как у ПК, поэтому код игры загружается и
+выполняется нативно, а системное ПО консоли реализовано заново. Заранее скомпилированные GPU-программы консоли
+(RDNA2) переводятся в SPIR-V для Vulkan. Модели, текстуры и звук читаются из вашего пакета. Всё это происходит
+**на вашем ПК, из вашей копии игры**.
+
+DSTN — форк проекта [Leonida](https://github.com/ItsNotRexed/Leonida), переименованный и переведённый на русский
+(см. [Происхождение и лицензия](#происхождение-и-лицензия)).
 
 > [!IMPORTANT]
-> This repository **does not contain the game, keys or an executable**, and it does not explain how to get them. You
-> need your own copy, with its files already readable on disk. Nothing here decrypts or works around any protection.
-> Everything the build creates (the generated shaders, extracted assets, the runtime folder and your saves) comes
-> from your game and stays on your PC. Never share those files.
+> В этом репозитории **нет ни игры, ни ключей, ни исполняемого файла**, и он не объясняет, где их взять. Нужна
+> своя копия, файлы которой уже читаются с диска как обычные файлы. Ничто здесь не расшифровывает данные и не
+> обходит никакую защиту. Всё, что создаёт сборка (сгенерированные шейдеры, извлечённые ресурсы, папка runtime и
+> ваши сохранения), получено из вашей игры и остаётся на вашем ПК. Никогда не выкладывайте эти файлы.
 
-Discord: https://discord.gg/rexed
-<br>
+## Состояние проекта
 
-## Project status
+**Ранняя стадия. Игра пока не запускается.** Всё, что можно сделать без исполняемого файла игры, готово, поэтому
+работа над запуском может начаться, как только он появится у разработчика.
 
-**Early. The game does not boot yet.** Everything that can be done without the game's executable is in place, so
-work on booting can start as soon as one is available to a developer.
-
-| What | Status |
+| Что | Состояние |
 |---|---|
-| Booting, story mode, anything playable | ❌ No |
-| Finding and checking your copy (Xbox Series 1.0.2.1) | ✅ Works |
-| Shaders: carve, unpack native RDNA2 code, disassemble | ✅ All 26,503 |
-| Shaders: RDNA2 → SPIR-V translation | ✅ **26,503 / 26,503 translated**: 2,236 VS, 12,101 PS, 2,689 CS, 9,282 mesh, 195 geometry, with a per-shader metadata index for pipeline creation. The LLVM 23.1.5 Linux rerun at `c432cdc` and the LLVM 23.1.3 Windows rerun at `43d0015` both translated all 26,503 ([Linux](https://github.com/ItsNotRexed/Leonida/issues/644#issuecomment-7072972586), [Windows](https://github.com/ItsNotRexed/Leonida/issues/644#issuecomment-7074299915)). Translation and SPIR-V validation are separate steps; validation results are listed below. ⚠️ 23,841 are wave64: exact on 64-wide subgroups (AMD). On 32-wide subgroups (NVIDIA, Intel), compute and mesh shaders are exact with wave64 emulation (`--wave64-emulate`, on by default there); cross-half wave ops in vertex, pixel and geometry shaders are still approximate |
-| SPIR-V validation (`spirv-val`) | ✅ **26,503 / 26,503 passed** in the LLVM 23.1.5 Linux rerun at `c432cdc` and in the full-corpus rerun at `43d4703`, after `dcd8ecf` fixed the SPIR-V ID-bound error ([Linux rerun](https://github.com/ItsNotRexed/Leonida/issues/644#issuecomment-7072972586), [full-corpus rerun](https://github.com/ItsNotRexed/Leonida/issues/881#issuecomment-7075507328)). On Windows at `43d0015`, all 26,503 translated but 26,501 passed validation; the two ID-bound failures were fixed by `dcd8ecf`. The intermediate `dedd75c` run also passed 26,501. |
-| Shader translator checked on a real GPU | ⚠️ The hand-written GPU tests (vertex fetch, texture sampling, exports, ALU ops, partial-register ops, barycentrics, wave-uniform branches, compute LDS/barriers/buffer stores, wave64 masks) have been run on more than 30 GPU and driver combinations, with results in [#166](https://github.com/ItsNotRexed/Leonida/issues/166): NVIDIA Turing, Ampere, Ada and Blackwell (Windows and Linux); AMD GCN3, RDNA1, RDNA2, RDNA3 and RDNA4 (Windows driver and RADV); Intel Gen9 (ANV); Apple M1 (MoltenVK, no geometry or mesh stages); and Mesa llvmpipe. Wave64 tests need 64-wide subgroups (AMD) or `DSTN_W64_EMULATE=1`. These are small test shaders: the game's own shaders are checked by `spirv-val` and by driver pipeline creation (`vk_pipeline_check`), not by their output |
-| Models (OBJ with real names, UVs, material references) | ✅ Exported. A ten-archive scan at decoder pin `e293917` recovered **382,781 models** with zero readback decode failures. This includes **343,327** models from `levels.rpf`. A full OBJ export of that archive is pending. See [recount and export scope](docs/models.md#full-archive-re-count-at-e293917). |
-| Texture dictionaries and world texture pools (DDS) | ✅ Exported. `rpf9dump` decodes BCPack BC1, BC3, BC4 and BC5 chunks in strict mode and skips BC6H, BC7 and chunks that need unconfirmed history; the assets stage then completes what it can with a clean-room decoder (`tools/bcpack.py`, which `tools/ttpf_assets.py` runs through `tools/ttpf_mips.py`) that rebuilds BC1, BC3, BC4, BC5, BC6H and BC7, and records the rest as a `BCPackLimitation` in `manifest.json` (most BC6H/BC7 chunks and the unconfirmed-history ones need a local history table, which the repo does not ship) ([notes](docs/textures.md)) |
-| Audio banks (AWC: Opus, XMA2) | ✅ Exported whole. Opus repackaged **losslessly** as Ogg Opus; PCM (codec 0/2) as WAV; XMA2 decoded with ffmpeg. `--wav` adds 16-bit PCM WAV ([notes](docs/audio.md)) |
-| Music/radio config | ? Measured. **1,589** audio-config records with exact durations and AWC stream ids; station grouping and content-id lists; no per-track start offsets ([notes](docs/audio_config.md)) |
-| PE loader and import shims | ⚠️ Runs a stand-in executable end to end (`dstnrt --run`: CRT startup, statics, heap, files, threads, GDK imports through the shims, exit code back). Controllers through a GameInput shim on SDL3 (any controller SDL supports, rumble, DualSense trigger effects and lightbar; built when SDL3 is installed or with `-DDSTN_SDL3_FETCH=ON`, [notes](docs/gameinput.md)). `--trace-d3d12` logs every D3D12 call and its outcome for the first boot. Untested against the real executable |
-| Xbox D3D12 → Vulkan | ⚠️ In progress. A Vulkan-backed device behind the Xbox-ABI proxy creates queues, command lists, fences, descriptor heaps, committed, placed and reserved resources, render-target and depth views (3D targets included), texture views and samplers (2D, cube, 1D and 3D views, the depth and stencil planes of depth-stencil textures, packed formats such as B5G6R5, B4G4R4A4 and R9G9B9E5, buffer SRVs — raw, structured and typed; they go into the bindless set), root signatures, pipelines and query heaps, and draws run on Vulkan. Barriers, clears, uploads, copies (BC included), colour resolves, predication, CPU-side texture reads and writes, and occlusion, timestamp and pipeline-statistics queries run on Vulkan, checked on one GPU. The console-shaped command-list proxy, the measured `PresentX` queue slots (30/32, layout-detected) wired to the presentation core, and `AllocateUploadMemory` (list slot 148, a mapped-upload arena whose addresses translate to buffer device addresses in root descriptors and IA/SO views) cover the console-ABI surface the package measures. Still open: the console list tail and the descriptor-table record model ([plan](docs/d3d12_vulkan.md)) |
-| Ray tracing (BVH) | ⚠️ In progress. `BuildRaytracingAccelerationStructure` builds BLASes and TLASes on the GPU in the console's XDXR BVH4 layout (the default; `DSTN_RT_AS=khr` uses Vulkan's own acceleration structures instead), which the translated shaders walk themselves through `image_bvh_intersect_ray` (all four triangle node types, TRI0-TRI3, with the barycentric remap byte); the GPU builder writes TRI0 and TRI1 leaves. Updates refit instead of rebuilding, and clone, compaction and the compacted/current postbuild sizes work; checked against a CPU reference on synthetic scenes. The build descriptions are recovered from the package's `XboxBvhBuilder.dll` ([notes](docs/xdxr.md)). The game's `*_bvh4.rpf` packs are measured: offline-built, dehydrated BLASes that rehydrate through that DLL with their geometry from the drawables in `levels.rpf` (measured on 8 of the 10 sampled BLAS; [notes](docs/bvh.md)). Not done in the builder: serialization. TRI1 pairing (no memory saved yet) and BOX16 nodes for `MINIMIZE_MEMORY` BLASes (an assumed switch) are in ([notes](docs/bvh.md)). Open: whether the game rehydrates the packs or rebuilds them ([#313](https://github.com/ItsNotRexed/Leonida/issues/313)) |
+| Запуск, сюжетный режим, хоть что-то играбельное | ❌ Нет |
+| Поиск и проверка вашей копии (Xbox Series 1.0.2.1) | ✅ Работает |
+| Шейдеры: вырезка, распаковка нативного кода RDNA2, дизассемблирование | ✅ Все 26 503 |
+| Шейдеры: перевод RDNA2 → SPIR-V | ✅ **Переведено 26 503 из 26 503**: 2 236 VS, 12 101 PS, 2 689 CS, 9 282 mesh, 195 geometry, с индексом метаданных каждого шейдера для создания конвейеров. Повторные прогоны на LLVM 23.1.5 под Linux (`c432cdc`) и на LLVM 23.1.3 под Windows (`43d0015`) перевели все 26 503 ([Linux](https://github.com/ItsNotRexed/Leonida/issues/644#issuecomment-7072972586), [Windows](https://github.com/ItsNotRexed/Leonida/issues/644#issuecomment-7074299915)). Перевод и проверка SPIR-V — отдельные шаги; результаты проверки ниже. ⚠️ 23 841 шейдер — wave64: точны на 64-разрядных подгруппах (AMD). На 32-разрядных подгруппах (NVIDIA, Intel) вычислительные и mesh-шейдеры точны с эмуляцией wave64 (`--wave64-emulate`, там она включена по умолчанию); межполовинные wave-операции в вершинных, пиксельных и геометрических шейдерах пока приближённые |
+| Проверка SPIR-V (`spirv-val`) | ✅ **Пройдено 26 503 из 26 503** в повторном прогоне на LLVM 23.1.5 под Linux (`c432cdc`) и в полном прогоне по корпусу на `43d4703`, после того как `dcd8ecf` исправил ошибку границы ID в SPIR-V ([Linux](https://github.com/ItsNotRexed/Leonida/issues/644#issuecomment-7072972586), [полный прогон](https://github.com/ItsNotRexed/Leonida/issues/881#issuecomment-7075507328)). Под Windows на `43d0015` переведены все 26 503, но проверку прошли 26 501; две ошибки границы ID исправил `dcd8ecf`. Промежуточный прогон `dedd75c` тоже прошёл 26 501. |
+| Транслятор шейдеров проверен на реальном GPU | ⚠️ Рукописные GPU-тесты (выборка вершин, сэмплирование текстур, экспорты, ALU-операции, операции над частью регистра, барицентрики, wave-однородные ветвления, LDS/барьеры/запись в буферы в вычислительных шейдерах, маски wave64) прогнаны более чем на 30 сочетаниях GPU и драйверов, результаты в [Leonida#166](https://github.com/ItsNotRexed/Leonida/issues/166): NVIDIA Turing, Ampere, Ada и Blackwell (Windows и Linux); AMD GCN3, RDNA1, RDNA2, RDNA3 и RDNA4 (драйвер Windows и RADV); Intel Gen9 (ANV); Apple M1 (MoltenVK, без geometry- и mesh-стадий); Mesa llvmpipe. Тестам wave64 нужны 64-разрядные подгруппы (AMD) или `DSTN_W64_EMULATE=1`. Это маленькие тестовые шейдеры: собственные шейдеры игры проверяются `spirv-val` и созданием конвейеров в драйвере (`vk_pipeline_check`), а не по их результату |
+| Модели (OBJ с настоящими именами, UV и ссылками на материалы) | ✅ Экспортируются. Сканирование десяти архивов на версии декодера `e293917` восстановило **382 781 модель** без единой ошибки декодирования. Из них **343 327** — из `levels.rpf`. Полный экспорт этого архива в OBJ ещё впереди. См. [пересчёт и объём экспорта](docs/models.md#full-archive-re-count-at-e293917). |
+| Словари текстур и пулы текстур мира (DDS) | ✅ Экспортируются. `rpf9dump` декодирует блоки BCPack BC1, BC3, BC4 и BC5 в строгом режиме и пропускает BC6H, BC7 и блоки, которым нужна неподтверждённая история; затем стадия assets доделывает, что может, «чистым» декодером (`tools/bcpack.py`, который `tools/ttpf_assets.py` вызывает через `tools/ttpf_mips.py`): он восстанавливает BC1, BC3, BC4, BC5, BC6H и BC7, а остальное записывает в `manifest.json` как `BCPackLimitation` (большинству блоков BC6H/BC7 и блокам с неподтверждённой историей нужна локальная таблица истории, которой в репозитории нет) ([заметки](docs/textures.md)) |
+| Звуковые банки (AWC: Opus, XMA2) | ✅ Экспортируются целиком. Opus переупаковывается **без потерь** в Ogg Opus; PCM (кодек 0/2) — в WAV; XMA2 декодируется через ffmpeg. `--wav` добавляет 16-битный PCM WAV ([заметки](docs/audio.md)) |
+| Настройки музыки и радио | ? Измерено. **1 589** записей звуковой конфигурации с точной длительностью и id потоков AWC; группировка по станциям и списки content-id; смещений начала треков нет ([заметки](docs/audio_config.md)) |
+| PE-загрузчик и заглушки импортов | ⚠️ Целиком выполняет подставную программу (`dstnrt --run`: запуск CRT, статические объекты, куча, файлы, потоки, импорты GDK через заглушки, возврат кода выхода). Контроллеры — через заглушку GameInput на SDL3 (любой контроллер, который поддерживает SDL, вибрация, эффекты триггеров и световая панель DualSense; собирается, если установлен SDL3, или с `-DDSTN_SDL3_FETCH=ON`, [заметки](docs/gameinput.md)). `--trace-d3d12` записывает каждый вызов D3D12 и его результат при первом запуске. С настоящим исполняемым файлом не проверялось. Как запустить тестовую игру — [ниже](#тестовая-игра) |
+| Xbox D3D12 → Vulkan | ⚠️ В работе. Устройство на Vulkan за прокси с Xbox-ABI создаёт очереди, списки команд, fence, кучи дескрипторов, committed-, placed- и reserved-ресурсы, представления render target и глубины (включая 3D), представления текстур и сэмплеры (2D, cube, 1D и 3D, плоскости глубины и трафарета, упакованные форматы вроде B5G6R5, B4G4R4A4 и R9G9B9E5, буферные SRV — raw, structured и typed; они попадают в bindless-набор), корневые сигнатуры, конвейеры и кучи запросов, а отрисовка выполняется на Vulkan. Барьеры, очистки, загрузки, копирования (включая BC), resolve цвета, предикация, чтение и запись текстур на CPU, запросы occlusion, timestamp и pipeline-statistics работают на Vulkan, проверено на одном GPU. Прокси списка команд в форме консоли, измеренные слоты очереди `PresentX` (30/32, раскладка определяется автоматически), подключённые к ядру вывода кадра, и `AllocateUploadMemory` (слот списка 148, отображённая арена загрузки, адреса которой переводятся в адреса буферов устройства в корневых дескрипторах и представлениях IA/SO) покрывают консольную часть ABI, измеренную по пакету. Ещё открыто: хвост консольного списка и модель записей таблиц дескрипторов ([план](docs/d3d12_vulkan.md)) |
+| Трассировка лучей (BVH) | ⚠️ В работе. `BuildRaytracingAccelerationStructure` строит BLAS и TLAS на GPU в консольной раскладке XDXR BVH4 (по умолчанию; `DSTN_RT_AS=khr` включает вместо неё собственные структуры ускорения Vulkan), которую переведённые шейдеры обходят сами через `image_bvh_intersect_ray` (все четыре типа треугольных узлов, TRI0–TRI3, с байтом перестановки барицентрик); GPU-построитель пишет листья TRI0 и TRI1. Обновления делают refit вместо перестройки; клонирование, сжатие и размеры compacted/current после построения работают; сверено с эталоном на CPU на синтетических сценах. Описания построения восстановлены из `XboxBvhBuilder.dll` пакета ([заметки](docs/xdxr.md)). Пакеты игры `*_bvh4.rpf` измерены: это построенные заранее «обезвоженные» BLAS, которые восстанавливаются через ту же DLL с геометрией из drawable-объектов в `levels.rpf` (измерено на 8 из 10 выбранных BLAS; [заметки](docs/bvh.md)). В построителе не сделано: сериализация. Парные TRI1 (память пока не экономится) и узлы BOX16 для BLAS с `MINIMIZE_MEMORY` (предполагаемый переключатель) есть ([заметки](docs/bvh.md)). Открыт вопрос: восстанавливает ли игра эти пакеты или перестраивает их ([Leonida#313](https://github.com/ItsNotRexed/Leonida/issues/313)) |
 
-The table above is written by hand. To measure it on your own checkout (unit and runtime tests, which rows of
-the translator contract were confirmed on a GPU, measured imports, your corpus counts and, with `--github`, CI
-and the `D3D-` items), run `python -I tools/progress_dashboard.py --out <folder outside the repo>` and open
-`progress.html` ([notes](docs/progress_dashboard.md)).
+Таблица выше пишется вручную. Чтобы измерить состояние на своей копии репозитория (юнит-тесты и тесты runtime,
+какие строки контракта транслятора подтверждены на GPU, измеренные импорты, счётчики по вашему корпусу, а с
+`--github` — CI и пункты `D3D-`), запустите `python -I tools/progress_dashboard.py --out <папка вне репозитория>`
+и откройте `progress.html` ([заметки](docs/progress_dashboard.md)).
 
+Ссылки вида «Leonida#N» ведут на обсуждения в исходном проекте Leonida: там собрана история измерений.
 
-## Platforms
+## Платформы
 
-Nothing is playable on any platform yet (see *Project status*). What runs where today:
+Пока ни на одной платформе ничего не играбельно (см. *Состояние проекта*). Что где работает сегодня:
 
-| Platform | Today |
+| Платформа | Сегодня |
 |---|---|
-| Windows | Everything: `make_game.py`, the tools, and the runtime (`dstnrt` and the D3D12 → Vulkan layer) with its tests. |
-| Linux | The translator, the asset tools and the Vulkan GPU test tools build and run natively (tested on RADV and NVIDIA). The runtime is Windows code: it cross-compiles with clang-cl and xwin, and its tests run under Wine or Proton (*The Windows runtime on Linux, under Wine or Proton* below). The game is meant to run the same way, under Wine or Proton with the D3D12 layer on native Vulkan (#217). |
-| macOS (Apple Silicon) | The Python tools and the Vulkan test tools run natively, on MoltenVK (Homebrew) or KosmicKrisp. The runtime is Windows code and runs as on Linux, under Wine: CrossOver, arm64 with FEX or x86-64 under Rosetta (#1706, #1707, #1924; #3119 fixes the last loader tests there). Known gaps: no geometry stage and no `VK_EXT_mesh_shader` (those tests are skipped), 32-wide subgroups (wave64 shaders run emulated), and MoltenVK's float handling (`PerVertexKHR`, NaN compares, -0, the cost of `NoContraction`); [docs/testing.md](docs/testing.md) lists each (#2947). |
-| AMD RDNA1 (RX 5000) | A supported target: close to the console's RDNA2, and its 64-wide subgroups run the wave64 shaders natively. RX 5700 XT results pass the GPU test suite (#146); on RADV, pixel shaders without fragment barycentrics have a known difference (*Known problems* in [docs/testing.md](docs/testing.md)) (#330). |
+| Windows | Всё: `make_game.py`, инструменты и runtime (`dstnrt` и слой D3D12 → Vulkan) с тестами. |
+| Linux | Транслятор, инструменты ресурсов и инструменты GPU-тестов Vulkan собираются и работают нативно (проверено на RADV и NVIDIA). Runtime — код для Windows: он кросс-компилируется через clang-cl и xwin, а его тесты запускаются под Wine или Proton (см. *Runtime для Windows на Linux, под Wine или Proton* в [docs/testing.md](docs/testing.md)). Игра должна запускаться так же: под Wine или Proton со слоем D3D12 поверх нативного Vulkan (Leonida#217). |
+| macOS (Apple Silicon) | Инструменты на Python и тестовые инструменты Vulkan работают нативно, на MoltenVK (Homebrew) или KosmicKrisp. Runtime — код для Windows и работает как на Linux, под Wine: CrossOver, arm64 с FEX или x86-64 под Rosetta (Leonida#1706, #1707, #1924; #3119 чинит последние тесты загрузчика там). Известные пробелы: нет geometry-стадии и `VK_EXT_mesh_shader` (такие тесты пропускаются), подгруппы шириной 32 (шейдеры wave64 эмулируются) и особенности работы MoltenVK с плавающей точкой (`PerVertexKHR`, сравнения с NaN, -0, цена `NoContraction`); [docs/testing.md](docs/testing.md) перечисляет каждый (Leonida#2947). |
+| AMD RDNA1 (RX 5000) | Поддерживаемая цель: близка к консольной RDNA2, а её 64-разрядные подгруппы выполняют шейдеры wave64 нативно. RX 5700 XT проходит набор GPU-тестов (Leonida#146); на RADV у пиксельных шейдеров без барицентрик фрагмента есть известное отличие (*Известные проблемы* в [docs/testing.md](docs/testing.md)) (Leonida#330). |
 
-GPU results from every platform are collected in #166; how to run the tests is in [docs/testing.md](docs/testing.md).
+GPU-результаты со всех платформ собраны в [Leonida#166](https://github.com/ItsNotRexed/Leonida/issues/166); как
+запускать тесты — в [docs/testing.md](docs/testing.md).
 
-## How to build
+## Как собрать
 
-The port isn't downloaded ready-made. It's built on your PC from your own copy.
+Порт не скачивается готовым. Он собирается на вашем ПК из вашей копии.
 
-**The easy way:**
+**Простой способ:**
 
-1. Install the prerequisites below.
-2. Download this project **with its submodule**: `git clone --recursive https://github.com/ItsNotRexed/Leonida`. A
-   "Download ZIP" from GitHub leaves out `third_party/rpf9-explorer`. The build fetches it if `git` is installed,
-   and otherwise tells you what to do.
-3. Double-click **`Build.bat`**.
+1. Установите всё из списка ниже.
+2. Скачайте этот проект **вместе с подмодулем**: `git clone --recursive <адрес этого репозитория>`. Кнопка
+   «Download ZIP» на GitHub не включает `third_party/rpf9-explorer`. Сборка докачает его сама, если установлен
+   `git`, а иначе скажет, что делать.
+3. Дважды щёлкните **`Build.bat`**.
 
-It finds your copy of the game by itself: it looks in Downloads, Desktop, Documents (also where Windows keeps them,
-such as in OneDrive), Games, your home folder and the top of every drive, two folders deep. It recognises the
-version from a few file sizes, without reading anything large. If you have more than one copy it asks which one, and if it finds none it asks you to paste the
-folder. Before starting it checks that everything below is installed and that there is enough free space, and it
-lists anything missing in one go. The result goes to `Documents\DSTN`. A stopped build continues where it left
-off.
+Сборка сама находит вашу копию игры: она ищет в «Загрузках», на Рабочем столе, в «Документах» (в том числе там,
+где их хранит Windows, например в OneDrive), в Games, в домашней папке и в корне каждого диска, на два уровня
+вглубь. Версию она узнаёт по размерам нескольких файлов, не читая ничего большого. Если копий несколько, она
+спросит, какую взять, а если ни одной — попросит вставить путь к папке. Перед стартом она проверяет, что всё
+нужное установлено и места хватает, и перечисляет всё недостающее разом. Результат попадает в `Documents\DSTN`.
+Прерванная сборка продолжается с того места, где остановилась.
 
-Your game folder is the one that holds `MicrosoftGame.Config` and the `.rpf` archives, as plain files.
+Папка игры — та, где лежат `MicrosoftGame.Config` и архивы `.rpf` в виде обычных файлов.
 
-**Prerequisites:**
+**Что нужно:**
 
-- **Your own copy** of the Xbox Series package, version 1.0.2.1.
-- **Windows 10/11 x64**, with about **400 GB** free for work files (an assets export alone measured about 337 GB before its audio step, in about 2 h 35 min). Disk sizes here are as Windows Explorer shows them, which are GiB: 400 GiB is about 430 GB in decimal units. They can go on another drive with `--work`.
-- [Python 3.12+](https://www.python.org/downloads/) (tick "Add python.exe to PATH").
+- **Своя копия** пакета Xbox Series версии 1.0.2.1.
+- **Windows 10/11 x64** и около **400 ГБ** свободного места под рабочие файлы (один только экспорт ресурсов
+  занял около 337 ГБ до звукового шага, примерно за 2 ч 35 мин). Размеры здесь — как их показывает Проводник
+  Windows, то есть в ГиБ: 400 ГиБ — это около 430 ГБ в десятичных единицах. Их можно вынести на другой диск через
+  `--work`.
+- [Python 3.12+](https://www.python.org/downloads/) (отметьте «Add python.exe to PATH»).
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
-- [Vulkan SDK](https://vulkan.lunarg.com/), for `spirv-as` / `spirv-val`.
-- [LLVM 21+](https://github.com/llvm/llvm-project/releases) with the **AMDGPU target** for `llvm-mc`. The official
-  Windows build has no AMDGPU target. On Windows, `scripts\build_llvm_mc.ps1` builds a native `llvm-mc.exe` with it
-  (no WSL; needs git and the Visual Studio C++ tools below) and sets `LLVM_MC`; it takes about 20-40 minutes. A faster
-  way, if you use [conda](https://docs.conda.io/): `conda install -c conda-forge llvm-tools` (its Windows build
-  includes the AMDGPU target; [docs/testing.md](docs/testing.md) used version 23.1.6), then set `LLVM_MC` to the full
-  path of the `llvm-mc.exe` it installs (`where.exe llvm-mc` shows it once the environment is active; in PowerShell a
-  bare `where` is `Where-Object`). Or install `llvm-21`
-  in WSL and set `LLVM_MC` to the whole command, `LLVM_MC="wsl -d Ubuntu -e /usr/lib/llvm-21/bin/llvm-mc"` (see
-  [docs/design.md](docs/design.md#disassembling-shaders)). On Linux, `llvm-mc` on PATH is enough.
-- Visual Studio 2022 with **Desktop development with C++** and the **Windows SDK 10.0.26100 or newer**, for the
-  runtime stage (the runtime uses version 1.2 root signatures, which older SDKs don't declare).
-- [ffmpeg](https://ffmpeg.org/download.html) on PATH (optional: decodes the XMA2 streams, and required for `--wav`).
+- [Vulkan SDK](https://vulkan.lunarg.com/) — ради `spirv-as` / `spirv-val`.
+- [LLVM 21+](https://github.com/llvm/llvm-project/releases) с **целью AMDGPU** — ради `llvm-mc`. В официальной
+  сборке для Windows цели AMDGPU нет. На Windows `scripts\build_llvm_mc.ps1` собирает с ней нативный
+  `llvm-mc.exe` (без WSL; нужны git и инструменты Visual Studio C++ ниже) и задаёт `LLVM_MC`; это занимает около
+  20–40 минут. Быстрее, если у вас есть [conda](https://docs.conda.io/): `conda install -c conda-forge llvm-tools`
+  (её сборка для Windows включает AMDGPU; в [docs/testing.md](docs/testing.md) использовалась версия 23.1.6), затем
+  задайте в `LLVM_MC` полный путь к установленному `llvm-mc.exe` (его покажет `where.exe llvm-mc` в активированном
+  окружении; в PowerShell просто `where` — это `Where-Object`). Или установите `llvm-21` в WSL и задайте в
+  `LLVM_MC` всю команду: `LLVM_MC="wsl -d Ubuntu -e /usr/lib/llvm-21/bin/llvm-mc"` (см.
+  [docs/design.md](docs/design.md#disassembling-shaders)). На Linux достаточно `llvm-mc` в PATH.
+- Visual Studio 2022 с нагрузкой **Desktop development with C++** и **Windows SDK 10.0.26100 или новее** — для
+  стадии runtime (runtime использует корневые сигнатуры версии 1.2, которых нет в старых SDK).
+- [ffmpeg](https://ffmpeg.org/download.html) в PATH (необязательно: декодирует потоки XMA2 и нужен для `--wav`).
 
-**Is this PC strong enough?** `python -I tools/pc_checker.py --cli` detects the CPU, GPU and RAM and compares them
-with the reference profiles before a long build: `--profile 1`, the default, is an Xbox Series X PC equivalent and
-`--profile 2` a 1080p Low community estimate. `python -I tools/pc_checker.py --check --json` prints the same verdict
-as JSON and returns it as an exit code (0 good, 1 weak, 2 unknown).
+**Хватит ли мощности ПК?** `python -I tools/pc_checker.py --cli` определяет процессор, видеокарту и объём памяти и
+сравнивает их с эталонными профилями до долгой сборки: `--profile 1` (по умолчанию) — ПК-эквивалент Xbox Series X,
+`--profile 2` — оценка сообщества для 1080p на низких настройках. `python -I tools/pc_checker.py --check --json`
+выводит тот же вердикт в JSON и возвращает его кодом выхода (0 — хорошо, 1 — слабо, 2 — неизвестно).
 
-**Low disk space:** the ~400 GB figure is for the full build. To *run* the port, `--stages check,shaders,runtime`
-needs about 30 GB; the `assets` stage (~370 GB) is only for the asset tools, and `--wav` adds several times the
-Ogg Opus size (the preflight prints this choice when the assets stage is what does not fit). `--work` and `--out`
-can sit on another drive. The runtime maps the package in place, so a read-only package drive needs
-`dstnrt --overlay <writable folder>`; `--overlay` is a `dstnrt` option, not a `make_game.py` one. Leave the `.s`
-files in `work/shaders/dxbc/disasm` in place: the next run checks them against the list in `disasm.done` and
-disassembles the missing ones again (all of them for a folder whose `disasm.done` predates that list), then
-translates every shader again. A `disasm` folder that is a symlink is refused when the stage has to clear it.
+**Мало места на диске:** цифра ~400 ГБ — для полной сборки. Чтобы *запустить* порт, стадиям
+`--stages check,shaders,runtime` нужно около 30 ГБ; стадия `assets` (~370 ГБ) нужна только инструментам
+ресурсов, а `--wav` добавляет объём, в несколько раз больший, чем Ogg Opus (предварительная проверка предлагает
+этот выбор, когда не помещается именно стадия assets). `--work` и `--out` можно разместить на другом диске.
+Runtime отображает пакет на месте, поэтому для пакета на диске только для чтения нужен
+`dstnrt --overlay <папка с правом записи>`; `--overlay` — опция `dstnrt`, а не `make_game.py`. Не трогайте файлы
+`.s` в `work/shaders/dxbc/disasm`: следующий запуск сверит их со списком в `disasm.done` и заново
+дизассемблирует недостающие (все — если `disasm.done` старше этого списка), а затем снова переведёт все шейдеры.
+Папка `disasm`, являющаяся символической ссылкой, отклоняется, когда стадии нужно её очистить.
 
-**From a terminal**, with the same behaviour and more control:
+**Из терминала** — то же поведение, но больше контроля:
 
 ```powershell
-python -I make_game.py --find                          # list the copies found on this PC
-python -I make_game.py --pick                          # choose the game folder in a folder dialog
-python -I make_game.py --check                         # check your copy, build nothing
-python -I make_game.py --check --full-check            # also compare SHA-256 of every file (slow)
-python -I make_game.py --game "D:\path\to\your\package" --out "D:\Games\DSTN" --work "E:\dstn-work"
-python -I make_game.py --stages shaders,assets         # only some stages
-python -I make_game.py --game "D:\path\to\your\package" --wav   # also decode Opus to PCM WAV (large)
-python -I make_game.py --wave64-emulate off            # auto (default), on or off; see below
+python -I make_game.py --find                          # показать копии, найденные на этом ПК
+python -I make_game.py --pick                          # выбрать папку игры в диалоге
+python -I make_game.py --check                         # проверить копию, ничего не собирая
+python -I make_game.py --check --full-check            # ещё и сверить SHA-256 каждого файла (медленно)
+python -I make_game.py --game "D:\путь\к\вашему\пакету" --out "D:\Games\DSTN" --work "E:\dstn-work"
+python -I make_game.py --stages shaders,assets         # только некоторые стадии
+python -I make_game.py --game "D:\путь\к\вашему\пакету" --wav   # ещё и декодировать Opus в PCM WAV (много места)
+python -I make_game.py --wave64-emulate off            # auto (по умолчанию), on или off; см. ниже
 ```
 
-`--wave64-emulate` decides whether wave64 compute and mesh shaders are translated to be exact on any subgroup size
-(see "Wave64 emulation" in [docs/design.md](docs/design.md)). NVIDIA and Intel GPUs have 32-wide subgroups and need
-it. The default, `auto`, asks `vulkaninfo` (part of the Vulkan SDK) and turns emulation on if any GPU lacks 64-wide
-subgroups or its subgroup size is unknown. It also checks whether the runtime's GPU can run compute and mesh
-shaders 64-wide. With `--mesh-compute`, only compute subgroup support is needed.
+`--wave64-emulate` решает, переводить ли вычислительные и mesh-шейдеры wave64 так, чтобы они были точны при любой
+ширине подгруппы (см. «Wave64 emulation» в [docs/design.md](docs/design.md)). У видеокарт NVIDIA и Intel подгруппы
+шириной 32, и им это нужно. Значение по умолчанию, `auto`, спрашивает `vulkaninfo` (входит в Vulkan SDK) и
+включает эмуляцию, если у какой-либо видеокарты нет 64-разрядных подгрупп или их ширина неизвестна. Ещё оно
+проверяет, может ли видеокарта runtime выполнять вычислительные и mesh-шейдеры в режиме 64. С `--mesh-compute`
+нужна только поддержка подгрупп в вычислительных шейдерах.
 
-On AMD's Windows driver, `auto` uses native wave64 on RDNA1 and RDNA2 when the runtime's GPU supports it, even
-if another GPU is 32-wide or `vulkaninfo` is unavailable. That driver can crash on emulated LDS code (#857).
-For RDNA1 cards without mesh support, the decision uses the compute stage, which can run wave64 without native
-mesh support.
+На драйвере AMD для Windows `auto` использует нативный wave64 на RDNA1 и RDNA2, если его поддерживает видеокарта
+runtime, даже когда другая видеокарта 32-разрядная или `vulkaninfo` недоступен. Этот драйвер может падать на
+эмулированном коде LDS (Leonida#857). Для карт RDNA1 без mesh-шейдеров решение принимается по вычислительной
+стадии, которая может выполнять wave64 без нативных mesh-шейдеров.
 
-The mode is saved next to the translated shaders, and changing it translates them again. `auto` can normally
-reuse previously emulated shaders. The AMD Windows workaround rebuilds those shaders in native mode.
-Use `--wave64-emulate on` to force emulation or `--wave64-emulate off` to force native wave64.
+Режим сохраняется рядом с переведёнными шейдерами, и его смена переводит их заново. `auto` обычно может повторно
+использовать уже эмулированные шейдеры. Обход для AMD под Windows пересобирает такие шейдеры в нативном режиме.
+`--wave64-emulate on` принудительно включает эмуляцию, `--wave64-emulate off` — нативный wave64.
 
-Four fallback flags are forwarded to the translator the same way, saved next to the translated shaders, and changing
-them translates them again: `--no-float-controls` (drop `SignedZeroInfNanPreserve`, for devices whose pipeline check
-skips a shader without `shaderSignedZeroInfNanPreserveFloat32`; needs PR #664's translator flag), `--bary-fallback`
-(read raw barycentrics from an interpolated input, for devices without `VK_KHR_fragment_shader_barycentric`),
-`--texel-offset-fallback` (fold `image_sample*_o` offsets into the coordinate, for devices without
-`VK_KHR_maintenance8`) and `--mesh-compute` (mesh shaders as compute, for devices without `VK_EXT_mesh_shader`).
-Each is documented in [docs/design.md](docs/design.md).
+Ещё четыре запасных флага передаются транслятору так же, сохраняются рядом с переведёнными шейдерами, и их смена
+переводит шейдеры заново: `--no-float-controls` (убирает `SignedZeroInfNanPreserve` для устройств, на которых
+проверка конвейеров пропускает шейдер без `shaderSignedZeroInfNanPreserveFloat32`; нужен флаг транслятора из
+Leonida PR #664), `--bary-fallback` (читает сырые барицентрики из интерполируемого входа — для устройств без
+`VK_KHR_fragment_shader_barycentric`), `--texel-offset-fallback` (вносит смещения `image_sample*_o` в координату —
+для устройств без `VK_KHR_maintenance8`) и `--mesh-compute` (mesh-шейдеры как вычислительные — для устройств без
+`VK_EXT_mesh_shader`). Каждый описан в [docs/design.md](docs/design.md).
 
-The build records which llvm-mc command and version produced the disassembly. Changing either, or reusing a work
-folder that predates this record, reruns disassembly and translation while keeping the extracted shader inputs.
+Сборка запоминает, какая команда и версия llvm-mc сделали дизассемблирование. Смена любой из них или повторное
+использование рабочей папки, созданной до появления этой записи, перезапускает дизассемблирование и перевод, но
+сохраняет извлечённые входные данные шейдеров.
 
-The build records which translator sources produced the shaders. A change to those files reruns translation using the
-saved disassembly. Older work folders need one translation after upgrading to record this information.
+Сборка запоминает, из каких исходников транслятора получены шейдеры. Изменение этих файлов перезапускает перевод по
+сохранённому дизассемблированию. Старым рабочим папкам после обновления нужен один перевод, чтобы записать эти
+сведения.
 
-The build also records which decoder (the `third_party/rpf9-explorer` commit and the `tools/rpf9dump` sources) exported
-each archive's models and textures and each texture pool. When it changes, the assets stage removes that export and
-makes it again. Older work folders have no record, so their models, textures and pools are exported once more after
-upgrading.
+Сборка также запоминает, каким декодером (коммит `third_party/rpf9-explorer` и исходники `tools/rpf9dump`)
+экспортированы модели и текстуры каждого архива и каждый пул текстур. Когда он меняется, стадия assets удаляет этот
+экспорт и делает его заново. В старых рабочих папках такой записи нет, поэтому после обновления их модели, текстуры
+и пулы экспортируются ещё раз.
 
-Stages run in order: `check`, `shaders`, `assets`, `runtime`, `pipelines` (creates every translated shader on your
-GPU driver and checks that it compiles, reports any it has to skip, and saves a pipeline cache to
-`pipeline_cache.bin` in `--out`; the runtime doesn't load that cache yet, so it doesn't speed up the first boot). The
-shader translation is the longest step: it runs on `--jobs` processes (half the CPU threads by default).
+Стадии идут по порядку: `check`, `shaders`, `assets`, `runtime`, `pipelines` (создаёт каждый переведённый шейдер в
+драйвере вашей видеокарты и проверяет, что он компилируется, сообщает о пропущенных и сохраняет кэш конвейеров в
+`pipeline_cache.bin` в `--out`; runtime пока не загружает этот кэш, поэтому первый запуск он не ускоряет).
+Перевод шейдеров — самый долгий шаг: он идёт в `--jobs` процессах (по умолчанию половина потоков процессора).
 
-`--wav` is off by default because 16-bit PCM WAV is several times larger than Ogg Opus. It decodes the repackaged Ogg
-Opus streams to `work\assets\audio\wav` after the audio bank step; existing WAV files are skipped when a build resumes.
+`--wav` по умолчанию выключен, потому что 16-битный PCM WAV в несколько раз больше Ogg Opus. Он декодирует
+переупакованные потоки Ogg Opus в `work\assets\audio\wav` после шага звуковых банков; уже готовые WAV при
+продолжении сборки пропускаются.
 
-### Vulkan diagnostics on Linux
+### Диагностика Vulkan на Linux
 
-With CMake 3.24+, a C++20 compiler, and Vulkan development headers and loader installed:
+С CMake 3.24+, компилятором C++20, заголовками и загрузчиком Vulkan:
 
 ```sh
 cmake -S runtime -B runtime/build/linux
@@ -197,85 +207,106 @@ cmake --build runtime/build/linux --parallel
 ./runtime/build/linux/vk_pipeline_check /path/to/spirv
 ```
 
-Pass the directory containing `index.json` and the translated SPIR-V files to `vk_pipeline_check`.
+Передайте `vk_pipeline_check` папку, где лежат `index.json` и переведённые файлы SPIR-V.
 
-`make_game.py` runs on Linux too. The `pipelines` stage uses the `vk_pipeline_check` built above
-(`runtime/build/linux`, or `runtime/build`), and builds it there itself before any other work if it is missing.
+`make_game.py` работает и на Linux. Стадия `pipelines` использует собранный выше `vk_pipeline_check`
+(`runtime/build/linux` или `runtime/build`) и, если его нет, сама собирает его там до любой другой работы.
 
-### Running the loader on Linux
+### Загрузчик на Linux
 
-The loader is a Windows program and runs under Wine or Proton; CI runs its tests under Wine on every push to
-`main` that changes `runtime/`, and on demand from the Actions tab (the `wine` job of the Runtime workflow). On Linux the `runtime` stage cross-builds it into
-`runtime/build/windows` with clang-cl and lld-link (LLVM 19+, but not 22.1.7 or 22.1.8, see [docs/testing.md](docs/testing.md#known-problems); plain names, or all five LLVM tools with one version
-suffix such as `clang-cl-21`) against the MSVC CRT and Windows SDK that
-[xwin](https://github.com/Jake-Shadle/xwin) lays out, in `XWIN_DIR` or `~/.local/share/xwin-sdk`
-([docs/testing.md](docs/testing.md#the-windows-runtime-on-linux-under-wine-or-proton) has the one-time `xwin`
-command). Without them the stage is left out of the default stages, and asking for it lists what is missing before
-any work starts. A Windows build made elsewhere works too, such as the `runtime-windows` artifact of that workflow's
-`windows` job, unzipped:
+Загрузчик — программа для Windows и работает под Wine или Proton; CI прогоняет его тесты под Wine при каждом
+push в `main`, затрагивающем `runtime/`, и по запросу со вкладки Actions (задача `wine` в процессе Runtime). На
+Linux стадия `runtime` кросс-собирает его в `runtime/build/windows` через clang-cl и lld-link (LLVM 19+, но не
+22.1.7 и не 22.1.8, см. [docs/testing.md](docs/testing.md#known-problems); простые имена или все пять
+инструментов LLVM с одним суффиксом версии, например `clang-cl-21`) с MSVC CRT и Windows SDK, которые раскладывает
+[xwin](https://github.com/Jake-Shadle/xwin), в `XWIN_DIR` или `~/.local/share/xwin-sdk`
+([docs/testing.md](docs/testing.md#the-windows-runtime-on-linux-under-wine-or-proton) содержит разовую команду
+`xwin`). Без них стадия исключается из стадий по умолчанию, а если её запросить явно, она до начала работы
+перечислит, чего не хватает. Подойдёт и сборка для Windows, сделанная в другом месте, например распакованный
+артефакт `runtime-windows` задачи `windows` того же процесса:
 
 ```sh
 python3 -I make_game.py --runtime-build ~/Downloads/runtime-windows
 ```
 
-Either way it copies `dstnrt.exe` and `dstnrt_tls_host.dll` into `--out` and writes `dstnrt.sh` next to them, which
-starts `dstnrt.exe` with `wine`, or with the Wine named by `WINE` (for Proton, its `files/bin/wine`). The same option
-skips the build on Windows.
+В обоих случаях `dstnrt.exe` и `dstnrt_tls_host.dll` копируются в `--out`, а рядом пишется `dstnrt.sh`, который
+запускает `dstnrt.exe` через `wine` или через Wine из переменной `WINE` (для Proton — его `files/bin/wine`). Та же
+опция пропускает сборку на Windows.
 
-On Linux, run `<out>/dstnrt.sh --dry-run` to inspect the packaged title's imports, then
-`<out>/dstnrt.sh --init` to check TLS callbacks and DLL initialization. Use `<out>/dstnrt.sh --run` for startup.
-These commands use the package in `game_path.txt`, the port's `overlay` for writes, and Vulkan by default.
+На Linux запустите `<out>/dstnrt.sh --dry-run`, чтобы посмотреть импорты упакованного приложения, затем
+`<out>/dstnrt.sh --init`, чтобы проверить TLS-колбэки и инициализацию DLL. Для запуска используйте
+`<out>/dstnrt.sh --run`. Эти команды берут пакет из `game_path.txt`, пишут в `overlay` порта и по умолчанию
+используют Vulkan.
 
-When the Vulkan backend is selected with `DSTN_D3D12=vulkan`, the packaged runtime finds the translated shaders
-in `<work>/shaders/spirv` using `shader_path.txt` beside `dstnrt.exe`. Set `DSTN_SHADERS` to use another directory.
+Когда бэкенд Vulkan выбран через `DSTN_D3D12=vulkan`, упакованный runtime находит переведённые шейдеры в
+`<work>/shaders/spirv` по файлу `shader_path.txt` рядом с `dstnrt.exe`. Чтобы взять другую папку, задайте
+`DSTN_SHADERS`.
 
-## How it works
+## Тестовая игра
 
-| Piece | What it does | Where |
+Настоящая игра пока не запускается, поэтому для разработки и проверки загрузчика есть **подставные «игры»** —
+маленькие Windows-программы из `runtime/test/fixtures/`, которые импортируют то же, что импортирует консольный
+исполняемый файл (GDK, `xgameruntime`, `d3d12_xs.dll`, XMem), и выполняются внутри `dstnrt`. Им не нужны файлы
+игры. Пошаговое руководство: [docs/test_game.md](docs/test_game.md).
+
+## Как это устроено
+
+| Часть | Что делает | Где |
 |---|---|---|
-| Version check | Every package file's name, size and SHA-256 for each supported version | `game/`, `make_game.py` |
-| Shader pipeline | Carves DXBC containers from `shaders.rpf` without its encrypted table of contents. Unpacks the `XBCH` → `FSSM` native RDNA2 program, disassembles it with LLVM (`gfx1013`) and translates it to SPIR-V | `tools/shader_carve.py`, `fssm_unpack.py`, `shader_disasm.py`, `rdna2spirv.py` |
-| Asset export | Finds validated resources inside RPF9 archives and the loose `.ttpf` texture pools | `tools/rpf9dump` (on rpf9-explorer's Core) |
-| Runtime | Maps the PE image, resolves imports to shims (GDK, XMem, `d3d12_xs`) | `runtime/` |
-| Research tools | PE/RTTI inspection, raw carving, texture tiling probes, GPU test harnesses | `tools/`, `runtime/test/` |
-| Progress dashboard | One offline page of what passes, what changed since it last passed and what blocks next, built from test results and the docs' own tables; nothing is written inside the repo | `tools/progress_dashboard.py` |
+| Проверка версии | Имя, размер и SHA-256 каждого файла пакета для каждой поддерживаемой версии | `game/`, `make_game.py` |
+| Конвейер шейдеров | Вырезает контейнеры DXBC из `shaders.rpf` без его зашифрованного оглавления. Распаковывает нативную программу RDNA2 `XBCH` → `FSSM`, дизассемблирует её через LLVM (`gfx1013`) и переводит в SPIR-V | `tools/shader_carve.py`, `fssm_unpack.py`, `shader_disasm.py`, `rdna2spirv.py` |
+| Экспорт ресурсов | Находит проверенные ресурсы в архивах RPF9 и отдельных пулах текстур `.ttpf` | `tools/rpf9dump` (на ядре rpf9-explorer) |
+| Runtime | Отображает PE-образ, связывает импорты с заглушками (GDK, XMem, `d3d12_xs`) | `runtime/` |
+| Исследовательские инструменты | Разбор PE/RTTI, сырая вырезка, пробы тайлинга текстур, обвязки GPU-тестов | `tools/`, `runtime/test/` |
+| Панель прогресса | Одна офлайн-страница: что проходит, что изменилось с последнего успешного прогона и что блокирует дальше; строится по результатам тестов и таблицам документации; внутрь репозитория ничего не пишется | `tools/progress_dashboard.py` |
 
-The translator's runtime contract (user SGPRs, push constants, memory model, bindless images, vertex fetch,
-system values) and all the format notes are in [docs/design.md](docs/design.md); the format, asset, runtime
-and validation notes are indexed in [docs/README.md](docs/README.md). The Xbox D3D12 plan is in
-[docs/d3d12_vulkan.md](docs/d3d12_vulkan.md). Audio bank formats and the export tools are in
-[docs/audio.md](docs/audio.md); [docs/related_projects.md](docs/related_projects.md) records the prior art we may
-read and the licence limits on it.
+Контракт транслятора с runtime (пользовательские SGPR, push-константы, модель памяти, bindless-изображения,
+выборка вершин, системные значения) и все заметки о форматах — в [docs/design.md](docs/design.md); заметки о
+форматах, ресурсах, runtime и проверке собраны в [docs/README.md](docs/README.md). План Xbox D3D12 — в
+[docs/d3d12_vulkan.md](docs/d3d12_vulkan.md). Форматы звуковых банков и инструменты экспорта — в
+[docs/audio.md](docs/audio.md); [docs/related_projects.md](docs/related_projects.md) перечисляет чужие проекты,
+которые можно читать, и лицензионные ограничения на них.
 
-## Want to help?
+Ход перевода документации на русский: [docs/translation_status.md](docs/translation_status.md).
 
-The biggest open pieces:
+## Хотите помочь?
 
-- **Shader translator on hardware**: compute, mesh and geometry now translate (see the translator contract in
-  [docs/design.md](docs/design.md)); still open are the vertex-shader input layout (`v0` = `VertexIndex` is
-  unverified if the console runs VS as NGG) and wave64 cross-half code in VS/PS/GS on 32-wide subgroups.
-- **Xbox D3D12 → Vulkan**: mesh-shader draws, indirect draw state and stream output are still open; #313 tracks the
-  remaining method surface, and nothing has been checked against the real executable yet ([plan and status](docs/d3d12_vulkan.md)).
-- **Model recovery**: investigate the 71 unrecovered fragment candidates in [`levels.rpf`](docs/models.md#full-archive-re-count-at-e293917).
+Самые крупные открытые части:
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Never attach game files, extracted assets or generated shaders to issues or
-pull requests.
+- **Транслятор шейдеров на железе**: вычислительные, mesh- и геометрические шейдеры уже переводятся (см. контракт
+  транслятора в [docs/design.md](docs/design.md)); открыты раскладка входов вершинного шейдера (`v0` =
+  `VertexIndex` не проверен, если консоль выполняет VS как NGG) и межполовинный код wave64 в VS/PS/GS на
+  32-разрядных подгруппах.
+- **Xbox D3D12 → Vulkan**: отрисовка mesh-шейдерами, состояние косвенной отрисовки и stream output ещё открыты;
+  [Leonida#313](https://github.com/ItsNotRexed/Leonida/issues/313) отслеживает оставшиеся методы, и с настоящим
+  исполняемым файлом пока ничего не сверялось ([план и состояние](docs/d3d12_vulkan.md)).
+- **Восстановление моделей**: разобрать 71 невосстановленного кандидата-фрагмента в
+  [`levels.rpf`](docs/models.md#full-archive-re-count-at-e293917).
 
-## Credits
+См. [CONTRIBUTING.md](CONTRIBUTING.md). Никогда не прикладывайте файлы игры, извлечённые ресурсы или
+сгенерированные шейдеры к issue и pull request.
 
-- [rpf9-explorer](https://github.com/breadbbbb/rpf9-explorer) by breadbbbb: the RPF9 model, texture-pool and AWC
-  decoders used by `tools/rpf9dump` (git submodule).
-- [Mesa](https://gitlab.freedesktop.org/mesa/mesa) (MIT): GFX10 resource-descriptor layout (`tools/gfx10_formats.json`),
-  and the ACO/RADV rules used as reference for 16-bit results and shader system registers.
-- [libHttpClient](https://github.com/microsoft/libHttpClient) (MIT) by Microsoft: the XTaskQueue/XAsync implementation
-  in `third_party/xtaskqueue`, used by the offline `xgameruntime` shim.
-- [LLVM](https://llvm.org/): AMDGPU disassembler.
-- Logo: ["Grand Theft Auto VI" icon by SlyDevil](https://www.steamgriddb.com/icon/122618) on SteamGridDB.
-- [SPIRV-Tools](https://github.com/KhronosGroup/SPIRV-Tools): assembly and validation.
+## Благодарности
 
-Grand Theft Auto and all related names are trademarks of their owners. This project is not affiliated with or
-endorsed by them.
+- [Leonida](https://github.com/ItsNotRexed/Leonida) и все его участники: исходный проект, на котором основан DSTN.
+- [rpf9-explorer](https://github.com/breadbbbb/rpf9-explorer) от breadbbbb: декодеры моделей RPF9, пулов текстур и
+  AWC, которые использует `tools/rpf9dump` (git-подмодуль).
+- [Mesa](https://gitlab.freedesktop.org/mesa/mesa) (MIT): раскладка дескрипторов ресурсов GFX10
+  (`tools/gfx10_formats.json`) и правила ACO/RADV, взятые за эталон для 16-битных результатов и системных регистров
+  шейдеров.
+- [libHttpClient](https://github.com/microsoft/libHttpClient) (MIT) от Microsoft: реализация XTaskQueue/XAsync в
+  `third_party/xtaskqueue`, которую использует офлайн-заглушка `xgameruntime`.
+- [LLVM](https://llvm.org/): дизассемблер AMDGPU.
+- Логотип: [иконка «Grand Theft Auto VI» от SlyDevil](https://www.steamgriddb.com/icon/122618) на SteamGridDB.
+- [SPIRV-Tools](https://github.com/KhronosGroup/SPIRV-Tools): ассемблирование и проверка.
 
-## License
+Grand Theft Auto и все связанные названия — товарные знаки их владельцев. Проект не связан с ними и не одобрен ими.
 
-GPLv3 (or any later version). See [LICENSE](LICENSE). Third-party code keeps its own license.
+## Происхождение и лицензия
+
+DSTN — изменённая версия [Leonida](https://github.com/ItsNotRexed/Leonida), взятая со снимка `main` от
+23 ноября 2026 года (`1cc6e3c`, плюс исправление FUZZ-82). Изменения в DSTN с 24 ноября 2026 года: проект
+переименован (переменные `LEONIDA_*` → `DSTN_*`, runtime `gta6rt` → `dstnrt`, пространство имён `leonida::` →
+`dstn::`), документация переводится на русский.
+
+GPLv3 (или любая более поздняя версия). См. [LICENSE](LICENSE). Сторонний код сохраняет свою лицензию.
