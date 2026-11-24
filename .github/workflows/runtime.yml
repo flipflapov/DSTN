@@ -100,7 +100,9 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 20
+    # A cold sccache (a new repository or an evicted cache) makes the MSVC build alone take about 19 minutes, so 20
+    # left no time to upload the runtime-windows artifact; a warm cache brings the job well under this.
+    timeout-minutes: 45
     outputs:
       wine-artifact: ${{ steps.upload-wine-artifact.outcome }}
     env:
@@ -555,9 +557,12 @@ jobs:
         env:
           # ps_ssharp: #1845 (the S#'s LOD bias, which a Metal sampler can't take). cs_fma_fused is newer than the job
           # and wrong on MoltenVK: https://github.com/ItsNotRexed/Leonida/issues/3796#issuecomment-7086691314
+          # cs_fmt_int_narrow: vk_compute_test hangs on the runner's Apple Paravirtual device and is killed after
+          # 120 s (it passes on llvmpipe and other GPUs); it needs a Mac to look into.
           EXPECTED_FAILURES: >-
             ps_ssharp
             cs_fma_fused
+            cs_fmt_int_narrow
         run: |
           set +e
           python3 -I scripts/run_gpu_tests.py --build runtime/build --llvm-mc "$LLVM_MC" --work "$RUNNER_TEMP/gpu" 2>&1 |
